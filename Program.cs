@@ -8,11 +8,11 @@ namespace DSentBot;
 
 public class Program
 {
-    private readonly IServiceProvider _service;
+    private readonly IServiceProvider _provider;
 
     public Program()
     {
-        _service = CreateProvider();
+        _provider = CreateProvider();
     }
 
     public static Task Main(string[] args) => new Program().MainAsync();
@@ -21,13 +21,6 @@ public class Program
 
     static IServiceProvider CreateProvider()
     {
-        var collection = new ServiceCollection();
-        //...
-        return collection.BuildServiceProvider();
-    }
-
-    static IServiceProvider CreateServices()
-    {
         var config = new DiscordSocketConfig()
         {
             LogLevel = LogSeverity.Debug
@@ -35,21 +28,21 @@ public class Program
 
         var collection = new ServiceCollection()
             .AddSingleton(config)
-            .AddSingleton<DiscordSocketClient>();
+            .AddSingleton<DiscordSocketClient>()
+            .AddSingleton<CommandService>()
+            .AddSingleton<CommandHandlerService>();
 
         return collection.BuildServiceProvider();
     }
 
     async Task MainAsync()
     {
-        _client = _service.GetRequiredService<DiscordSocketClient>();
-
+        _client = _provider.GetRequiredService<DiscordSocketClient>();
         _client.Log += (LogMessage msg) =>
         {
             Console.WriteLine(msg.ToString());
             return Task.CompletedTask;
         };
-        _client.MessageReceived += CommandHandler;
 
         var token = Environment.GetEnvironmentVariable("DSentBotToken");
         await _client.LoginAsync(TokenType.Bot, token);
@@ -58,6 +51,7 @@ public class Program
         _client.Ready += () =>
         {
             Console.WriteLine("Bot is connected!");
+            _provider.GetRequiredService<CommandHandlerService>();
             return Task.CompletedTask;
         };
 
