@@ -38,6 +38,8 @@ public class Program
     async Task MainAsync()
     {
         _client = _provider.GetRequiredService<DiscordSocketClient>();
+        _provider.GetRequiredService<CommandHandlerService>();
+
         _client.Log += (LogMessage msg) =>
         {
             Console.WriteLine(msg.ToString());
@@ -51,7 +53,6 @@ public class Program
         _client.Ready += () =>
         {
             Console.WriteLine("Bot is connected!");
-            _provider.GetRequiredService<CommandHandlerService>();
             return Task.CompletedTask;
         };
 
