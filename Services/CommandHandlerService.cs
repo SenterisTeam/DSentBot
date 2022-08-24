@@ -1,32 +1,29 @@
 using System.Reflection;
 using Discord.Commands;
 using Discord.WebSocket;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace DSentBot.Services;
 
-public class CommandHandlerService
+public class CommandHandlerService : BackgroundService
 {
     private readonly DiscordSocketClient _client;
     private readonly CommandService _commands;
+    private readonly ILogger<CommandHandlerService> _logger;
 
-    public CommandHandlerService(IServiceProvider provider)
+    public CommandHandlerService(CommandService commandService, DiscordSocketClient discordSocketClient, ILogger<CommandHandlerService> logger)
     {
-        _commands = provider.GetRequiredService<CommandService>();
-        _client = provider.GetRequiredService<DiscordSocketClient>();
-
-    Task.Run(() => InstallCommandsAsync());
+        _commands = commandService;
+        _client = discordSocketClient;
+        _logger = logger;
     }
 
-    public async Task InstallCommandsAsync()
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        Console.WriteLine("InstallCommandsAsync");
+        _logger.LogInformation("Execute CommandHandlerService");
         _client.MessageReceived += HandleCommandAsync;
 
-        // If you do not use Dependency Injection, pass null.
-        // See Dependency Injection guide for more information.
         await _commands.AddModulesAsync(assembly: Assembly.GetEntryAssembly(),
-                                        services: null);
+            services: null);
     }
 
     private async Task HandleCommandAsync(SocketMessage messageParam)
@@ -55,4 +52,5 @@ public class CommandHandlerService
             argPos: argPos,
             services: null);
     }
+
 }

@@ -1,42 +1,30 @@
 ﻿using DSentBot.Services;
 using Discord;
 using Discord.Commands;
+using Discord.Rest;
 using Discord.WebSocket;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace DSentBot;
 
 public class Program
 {
-    private readonly IServiceProvider _provider;
-
     public Program()
     {
-        _provider = CreateProvider();
+        _provider = CreateHostBuilder();
     }
+
+    private IHostBuilder _provider;
 
     public static Task Main(string[] args) => new Program().MainAsync();
 
     private DiscordSocketClient _client;
 
-    static IServiceProvider CreateProvider()
-    {
-        var config = new DiscordSocketConfig()
-        {
-            LogLevel = LogSeverity.Debug
-        };
-
-        var collection = new ServiceCollection()
-            .AddSingleton(config)
-            .AddSingleton<DiscordSocketClient>()
-            .AddSingleton<CommandService>()
-            .AddSingleton<CommandHandlerService>();
-
-        return collection.BuildServiceProvider();
-    }
 
     async Task MainAsync()
     {
+        CreateHostBuilder().Build().Run();
+
+        /*
         _client = _provider.GetRequiredService<DiscordSocketClient>();
         _provider.GetRequiredService<CommandHandlerService>();
 
@@ -57,10 +45,22 @@ public class Program
         };
 
         await Task.Delay(-1); // Block this task until the program is closed.
+        */
     }
 
-    private Task CommandHandler(SocketMessage msg)
+    static DiscordSocketConfig dsconfig = new()
     {
-        throw new NotImplementedException();
-    }
+        LogLevel = LogSeverity.Debug
+    };
+    public static IHostBuilder CreateHostBuilder() =>
+        Host.CreateDefaultBuilder()
+            .ConfigureServices(services =>
+            {
+                services.AddSingleton(dsconfig);
+                services.AddSingleton<DiscordSocketClient>();
+                services.AddSingleton<CommandService>();
+                services.AddHostedService<DiscordHostedService>();
+                services.AddHostedService<CommandHandlerService>();
+
+            });
 }
