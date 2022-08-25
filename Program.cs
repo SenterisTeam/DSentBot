@@ -3,6 +3,7 @@ using Discord;
 using Discord.Commands;
 using Discord.Rest;
 using Discord.WebSocket;
+using Microsoft.Extensions.Logging.Configuration;
 
 namespace DSentBot;
 
@@ -54,6 +55,7 @@ public class Program
     };
     public static IHostBuilder CreateHostBuilder() =>
         Host.CreateDefaultBuilder()
+            .ConfigureLogging(l => l.AddDebug().SetMinimumLevel(LogLevel.Debug))
             .ConfigureServices(services =>
             {
                 services.AddSingleton(dsconfig);

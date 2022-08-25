@@ -17,23 +17,6 @@ public class DiscordHostedService : IHostedService
         _logger = logger;
     }
 
-    protected async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        _client.Log += (LogMessage msg) =>
-        {
-            Console.WriteLine(msg.ToString());
-            return Task.CompletedTask;
-        };
-
-        _client.Ready += () =>
-        {
-            Console.WriteLine("Bot is connected!");
-            return Task.CompletedTask;
-        };
-
-        await Task.Delay(-1); // Block this task until the program is closed.
-    }
-
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         try
@@ -41,6 +24,18 @@ public class DiscordHostedService : IHostedService
             var token = Environment.GetEnvironmentVariable("DSentBotToken");
             await _client.LoginAsync(TokenType.Bot, token, true).WaitAsync(cancellationToken);
             await _client.StartAsync().WaitAsync(cancellationToken);
+
+            _client.Log += (LogMessage msg) =>
+            {
+                _logger.LogDebug(msg.ToString());
+                return Task.CompletedTask;
+            };
+
+            _client.Ready += () =>
+            {
+                _logger.LogInformation("Bot is connected!");
+                return Task.CompletedTask;
+            };
         }
         catch (Exception e)
         {
