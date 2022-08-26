@@ -30,17 +30,18 @@ public class CommandHandlerService : BackgroundService
     {
         // Don't process the command if it was a system message
         var message = messageParam as SocketUserMessage;
-        Console.WriteLine(message);
         if (message == null) return;
 
         // Create a number to track where the prefix ends and the command begins
         int argPos = 0;
 
         // Determine if the message is a command based on the prefix and make sure no bots trigger commands
-        if (!(message.HasCharPrefix('&', ref argPos) ||
+        if (!(message.HasCharPrefix('~', ref argPos) ||
             message.HasMentionPrefix(_client.CurrentUser, ref argPos)) ||
             message.Author.IsBot)
             return;
+
+        _logger.LogInformation("cmd: "+message);
 
         // Create a WebSocket-based command context based on the message
         var context = new SocketCommandContext(_client, message);

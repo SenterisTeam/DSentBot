@@ -10,7 +10,7 @@ public class InfoModule : ModuleBase<SocketCommandContext>
     public async Task PingAsync()
     {
         DateTimeOffset pingDT = Context.Message.CreatedAt;
-        await ReplyAsync("Ping!").ContinueWith((reply) =>
+        ReplyAsync("Ping!").ContinueWith((reply) =>
         {
             DateTimeOffset pongDT = reply.Result.CreatedAt;
             reply.Result.ModifyAsync(m => m.Content = $"Pong! \n`Ping: {(pongDT - pingDT).TotalMilliseconds}ms`");
