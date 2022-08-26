@@ -3,6 +3,7 @@ using Discord;
 using Discord.Commands;
 using Discord.Rest;
 using Discord.WebSocket;
+using DSentBot.Services.DiscordBot;
 using Microsoft.Extensions.Logging.Configuration;
 
 namespace DSentBot;

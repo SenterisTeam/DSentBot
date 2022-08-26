@@ -2,7 +2,7 @@ using System.Reflection;
 using Discord.Commands;
 using Discord.WebSocket;
 
-namespace DSentBot.Services;
+namespace DSentBot.Services.DiscordBot;
 
 public class CommandHandlerService : BackgroundService
 {

@@ -1,7 +1,7 @@
 using Discord;
 using Discord.WebSocket;
 
-namespace DSentBot.Services;
+namespace DSentBot.Services.DiscordBot;
 
 public class DiscordHostedService : IHostedService
 {
