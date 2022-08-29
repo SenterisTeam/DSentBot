@@ -1,7 +1,7 @@
 using Discord;
 using Discord.Commands;
 
-namespace DSentBot.Services.DiscordBot.Cmds;
+namespace DSentBot.Services.DiscordBot.Modules;
 
 public class InfoModule : ModuleBase<SocketCommandContext>
 {

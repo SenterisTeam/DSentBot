@@ -32,13 +32,19 @@ public class Program
         LogLevel = LogSeverity.Info
     };
 
+    public static CommandServiceConfig cmdConfig = new()
+    {
+        DefaultRunMode = RunMode.Async,
+        LogLevel = LogSeverity.Info
+    };
+
     public static IHostBuilder CreateHostBuilder() =>
         Host.CreateDefaultBuilder()
             .ConfigureLogging(l => l.AddDebug().SetMinimumLevel(LogLevel.Debug))
             .ConfigureServices(services =>
             {
                 services.AddSingleton<DiscordSocketClient>(new DiscordSocketClient(dsconfig));
-                services.AddSingleton<CommandService>();
+                services.AddSingleton<CommandService>(new CommandService(cmdConfig));
                 services.AddHostedService<DiscordHostedService>();
                 services.AddHostedService<CommandHandlerService>();
 
