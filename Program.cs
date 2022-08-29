@@ -4,6 +4,7 @@ using Discord.Commands;
 using Discord.Rest;
 using Discord.WebSocket;
 using DSentBot.Services.DiscordBot;
+using DSentBot.Services.MusicPlayerServices;
 using Microsoft.Extensions.Logging.Configuration;
 
 namespace DSentBot;
@@ -47,6 +48,9 @@ public class Program
                 services.AddSingleton<CommandService>(new CommandService(cmdConfig));
                 services.AddHostedService<DiscordHostedService>();
                 services.AddHostedService<CommandHandlerService>();
+
+                services.AddScoped<IMusicGetter, YouTubeUrlMusicGetter>();
+                services.AddScoped<IMusicPlayer, WebToFFpmegPlayer>();
 
             });
 }
