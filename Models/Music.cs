@@ -1,4 +1,6 @@
-namespace DSentBot.Services.MusicPlayerServices;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace DSentBot.Models;
 
 public class Music
 {
@@ -8,8 +10,9 @@ public class Music
         Path = path;
         EnteredSearch = enteredSearch;
     }
-    public string Name { get; private set; }
-    public string Path { get; private set; }
+    public string Name { get; set; }
+    public string Path { get; set; }
+    [NotMapped]
     public TimeSpan Duration { get; }
-    public string EnteredSearch { get; private set; }
+    public string EnteredSearch { get; set; }
 }
