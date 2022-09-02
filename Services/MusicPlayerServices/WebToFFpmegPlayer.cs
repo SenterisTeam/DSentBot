@@ -12,7 +12,7 @@ public class WebToFFpmegPlayer: IMusicPlayer
         using (var stream = client.GetStreamAsync(music.Path))
         using (var ffmpeg = CreateStream(stream.Result))
         using (var output = ffmpeg.StandardOutput.BaseStream)
-        using (var discord = audioClient.CreatePCMStream(AudioApplication.Mixed, bufferMillis: 3000, packetLoss: 0))
+        using (var discord = audioClient.CreatePCMStream(AudioApplication.Mixed, bitrate: 131072, bufferMillis: 3000, packetLoss: 0)) // Default bitrate is 96*1024
         {
             try { await output.CopyToAsync(discord); }
             finally { await discord.FlushAsync(); }
