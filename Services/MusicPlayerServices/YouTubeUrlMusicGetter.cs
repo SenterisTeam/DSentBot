@@ -14,7 +14,7 @@ public class YouTubeUrlMusicGetter : IMusicGetter
 
         try
         {
-            var video = await youtube.GetVideoAsync("https://www.youtube.com/watch?v=l4uPgYnC2fM");
+            var video = await youtube.GetVideoAsync(search);
             return new Music(video.Title, video.Uri, search);
         }
         catch (ArgumentException e) { }
