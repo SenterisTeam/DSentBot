@@ -52,6 +52,10 @@ public class Program
                 services.AddScoped<IMusicGetter, YouTubeUrlMusicGetter>();
                 services.AddScoped<IMusicPlayer, WebToFFmpegPlayer>();
 
+
+                services.AddSingleton<MusicPlayerCollection>();
+                services.AddHostedService<MusicPlayerCollection>(c => c.GetRequiredService<MusicPlayerCollection>());
+
                 services.AddSingleton<FFmpegCollection>();
                 services.AddHostedService<FFmpegCollection>(c => c.GetRequiredService<FFmpegCollection>());
             });
