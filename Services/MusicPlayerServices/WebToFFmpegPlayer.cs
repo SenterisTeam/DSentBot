@@ -4,15 +4,24 @@ using DSentBot.Models;
 
 namespace DSentBot.Services.MusicPlayerServices;
 
-public class WebToFFpmegPlayer: IMusicPlayer
+public class WebToFFmpegPlayer: IMusicPlayer
 {
+    private readonly FFmpegCollection _ffmpegCollection;
+    private readonly ILogger<WebToFFmpegPlayer> _logger;
+
+    public WebToFFmpegPlayer(FFmpegCollection ffmpegCollection, ILogger<WebToFFmpegPlayer> logger)
+    {
+        _ffmpegCollection = ffmpegCollection;
+        _logger = logger;
+    }
+
     public async Task Play(Music music, IAudioClient audioClient)
     {
         using (var client = new HttpClient())
         using (var stream = client.GetStreamAsync(music.Path))
         using (var ffmpeg = CreateStream(stream.Result))
         using (var output = ffmpeg.StandardOutput.BaseStream)
-        using (var discord = audioClient.CreatePCMStream(AudioApplication.Mixed, bitrate: 131072, bufferMillis: 3000, packetLoss: 0)) // Default bitrate is 96*1024
+        using (var discord = audioClient.CreatePCMStream(AudioApplication.Mixed, bitrate: 131072, bufferMillis: 10, packetLoss: 0)) // Default bitrate is 96*1024
         {
             try { await output.CopyToAsync(discord); }
             finally { await discord.FlushAsync(); }
@@ -21,14 +30,9 @@ public class WebToFFpmegPlayer: IMusicPlayer
 
     private Process CreateStream(Stream stream)
     {
-        var process = Process.Start(new ProcessStartInfo
-        {
-            FileName = "ffmpeg",
-            Arguments = $"-hide_banner -loglevel debug -i - -ac 2 -f s16le -ar 48000 pipe:1", // #TODO change bitrate to 128k/256k
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardInput = true
-        });
+        _logger.LogInformation("FFmpeg getting..");
+        var process = _ffmpegCollection.GetProcess();
+        _logger.LogInformation("Stream started");
 
         stream.CopyToAsync(process.StandardInput.BaseStream);
 

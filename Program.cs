@@ -50,7 +50,9 @@ public class Program
                 services.AddHostedService<CommandHandlerService>();
 
                 services.AddScoped<IMusicGetter, YouTubeUrlMusicGetter>();
-                services.AddScoped<IMusicPlayer, WebToFFpmegPlayer>();
+                services.AddScoped<IMusicPlayer, WebToFFmpegPlayer>();
 
+                services.AddSingleton<FFmpegCollection>();
+                services.AddHostedService<FFmpegCollection>(c => c.GetRequiredService<FFmpegCollection>());
             });
 }
