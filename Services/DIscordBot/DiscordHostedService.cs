@@ -1,5 +1,7 @@
 using Discord;
 using Discord.WebSocket;
+using DSentBot.Services.DiscordBot.Configurations;
+using Microsoft.Extensions.Options;
 
 namespace DSentBot.Services.DiscordBot;
 
@@ -8,21 +10,22 @@ public class DiscordHostedService : IHostedService
     private readonly DiscordSocketClient _client;
     private IConfiguration _configuration;
     private ILogger<DiscordHostedService> _logger;
+    private readonly DiscordHostConfiguration _options;
 
 
-    public DiscordHostedService(DiscordSocketClient client, IConfiguration configuration, ILogger<DiscordHostedService> logger)
+    public DiscordHostedService(DiscordSocketClient client, IConfiguration configuration, ILogger<DiscordHostedService> logger, IOptions<DiscordHostConfiguration> options)
     {
         _client = client;
         _configuration = configuration;
         _logger = logger;
+        _options = options.Value;
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         try
         {
-            var token = Environment.GetEnvironmentVariable("DSentBotToken");
-            await _client.LoginAsync(TokenType.Bot, token, true).WaitAsync(cancellationToken);
+            await _client.LoginAsync(TokenType.Bot, _options.Token, true).WaitAsync(cancellationToken);
             await _client.StartAsync().WaitAsync(cancellationToken);
 
             _client.Log += (LogMessage msg) =>

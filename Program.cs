@@ -4,55 +4,43 @@ using Discord.Commands;
 using Discord.Rest;
 using Discord.WebSocket;
 using DSentBot.Services.DiscordBot;
+using DSentBot.Services.DiscordBot.Configurations;
 using DSentBot.Services.MusicPlayerServices;
 using Microsoft.Extensions.Logging.Configuration;
+using Microsoft.Extensions.Options;
 
-namespace DSentBot;
 
-public class Program
-{
-    public Program()
+var host = Host.CreateDefaultBuilder()
+    .ConfigureLogging(l => l.AddDebug().SetMinimumLevel(LogLevel.Debug))
+    .ConfigureServices((context, services) =>
     {
-        _provider = CreateHostBuilder();
-    }
-
-    private IHostBuilder _provider;
-
-    public static Task Main(string[] args) => new Program().MainAsync();
-
-    private DiscordSocketClient _client;
-
-
-    async Task MainAsync()
-    {
-        CreateHostBuilder().Build().Run();
-    }
-
-    public static DiscordSocketConfig dsconfig = new()
-    {
-        LogLevel = LogSeverity.Info
-    };
-
-    public static CommandServiceConfig cmdConfig = new()
-    {
-        DefaultRunMode = RunMode.Async,
-        LogLevel = LogSeverity.Info
-    };
-
-    public static IHostBuilder CreateHostBuilder() =>
-        Host.CreateDefaultBuilder()
-            .ConfigureLogging(l => l.AddDebug().SetMinimumLevel(LogLevel.Debug))
-            .ConfigureServices(services =>
+        services.Configure<DiscordHostConfiguration>(c =>
+        {
+            c.Token = context.Configuration["DSentBotToken"];
+            
+            c.SocketConfig = new DiscordSocketConfig()
             {
-                services.AddSingleton<DiscordSocketClient>(new DiscordSocketClient(dsconfig));
-                services.AddSingleton<CommandService>(new CommandService(cmdConfig));
-                services.AddHostedService<DiscordHostedService>();
-                services.AddHostedService<CommandHandlerService>();
+                LogLevel = LogSeverity.Info
+            };
+        });
 
-                services.AddScoped<IMusicGetter, YouTubeUrlMusicGetter>();
-                services.AddScoped<IMusicPlayer, WebToFFmpegPlayer>();
+        services.Configure<CommandServiceConfig>(c =>
+        {
+            c.DefaultRunMode = RunMode.Async;
+            c.LogLevel = LogSeverity.Info;
+        });
 
-                services.AddSingleton<FFmpegCollection>();
-                services.AddHostedService<FFmpegCollection>(c => c.GetRequiredService<FFmpegCollection>());
-            });
-}
+        services.AddSingleton<DiscordSocketClient>(c => new DiscordSocketClient(c.GetRequiredService<IOptions<DiscordHostConfiguration>>().Value.SocketConfig));
+        services.AddSingleton<CommandService>(c => new CommandService(c.GetRequiredService<IOptions<CommandServiceConfig>>().Value));
+        services.AddHostedService<DiscordHostedService>();
+        services.AddHostedService<CommandHandlerService>();
+
+        services.AddScoped<IMusicGetter, YouTubeUrlMusicGetter>();
+        services.AddScoped<IMusicPlayer, WebToFFmpegPlayer>();
+
+        services.AddSingleton<FFmpegCollection>();
+        services.AddHostedService<FFmpegCollection>(c => c.GetRequiredService<FFmpegCollection>());
+    })
+    .Build();
+
+await host.RunAsync();
