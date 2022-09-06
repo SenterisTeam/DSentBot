@@ -22,10 +22,8 @@ public class WebToFFmpegPlayer: MusicServiceBase
 
     protected override async Task Player(CancellationToken cancellationToken)
     {
-        Console.WriteLine("Player");
         while (_musicQueue.Count != 0 && !cancellationToken.IsCancellationRequested)
         {
-            Console.WriteLine("Play");
             Music music = _musicQueue.Dequeue();
 
             using (var client = new HttpClient())
@@ -38,7 +36,7 @@ public class WebToFFmpegPlayer: MusicServiceBase
                 finally { await discord.FlushAsync(); }
             }
 
-            Console.WriteLine("Stream has finished");
+            // TODO it doesn't finish
         }
     }
 
@@ -62,7 +60,6 @@ public class WebToFFmpegPlayer: MusicServiceBase
 
     public override Task AddToQueue(Music music)
     {
-        Console.WriteLine("AddToQueue");
         _musicQueue.Enqueue(music);
 
         return Task.CompletedTask;
@@ -76,13 +73,11 @@ public class WebToFFmpegPlayer: MusicServiceBase
 
     public override async Task StopAsync()
     {
-        Console.WriteLine("StopAsync");
         await _audioClient.StopAsync();
     }
 
     public override async Task StartAsync(CancellationToken cancellationToken, IAudioClient audioClient, Music music)
     {
-        Console.WriteLine("StartAsync");
         _audioClient = audioClient;
 
         AddToQueue(music);

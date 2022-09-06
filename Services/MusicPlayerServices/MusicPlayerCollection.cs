@@ -18,9 +18,7 @@ public class MusicPlayerCollection : IHostedService
 
     public void Add(ulong guildID, IAudioClient audioClient, Music music)
     {
-        Console.WriteLine("Add");
         var musicPlayer = _serviceProvider.GetRequiredService<IMusicPlayer>();
-        Console.WriteLine(musicPlayer.GetType().ToString());
         musicPlayer.StartAsync(_cancellationToken, audioClient, music);
         _musicPlayers.TryAdd(guildID, musicPlayer);
 
