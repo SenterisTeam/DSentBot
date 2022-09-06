@@ -10,10 +10,12 @@ namespace DSentBot.Services.DiscordBot.Modules;
 public class MusicModule : ModuleBase<SocketCommandContext>
 {
     private readonly IServiceProvider _provider;
+    private readonly MusicPlayerCollection _mpCollection;
 
-    public MusicModule(IServiceProvider provider)
+    public MusicModule(IServiceProvider provider, MusicPlayerCollection mpCollection)
     {
         _provider = provider;
+        _mpCollection = mpCollection;
     }
     
     [Command("play", RunMode = RunMode.Async)]
@@ -26,14 +28,17 @@ public class MusicModule : ModuleBase<SocketCommandContext>
 
         var music = _provider.GetRequiredService<IMusicGetter>().GetMusic(search); // Will ber GetServices later
 
-        // For the next step with transmitting audio, you would want to pass this Audio Client in to a service.
-        var audioClient = channel.ConnectAsync();
-
-        await Task.WhenAll(music, audioClient);
-
-        var player = _provider.GetRequiredService<IMusicPlayer>();
-
-        if (music != null)
-            await player.Play(music.Result, audioClient.Result);
+        if (music == null) return;
+        IMusicPlayer player = _mpCollection.Get(Context.Guild.Id);
+        if (player == null)
+        {
+            Task<IAudioClient> audioClient = channel.ConnectAsync();
+            await Task.WhenAll(music, audioClient);
+            _mpCollection.Add(Context.Guild.Id, audioClient.Result, music.Result);
+        }
+        else
+        {
+            await player.AddToQueue(await music);
+        }
     }
 }

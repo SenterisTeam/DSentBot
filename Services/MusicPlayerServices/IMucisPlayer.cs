@@ -6,5 +6,12 @@ namespace DSentBot.Services.MusicPlayerServices;
 
 public interface IMusicPlayer
 {
-    public Task Play(Music music, IAudioClient audioClient);
+    ulong GuildID { get; }
+    Queue<Music> MusicQueue { get; }
+
+    public Task AddToQueue(Music music);
+    public Task SkipMusic();
+    public Task StopAsync();
+
+    public Task StartAsync(CancellationToken cancellationToken, IAudioClient audioClient, Music music);
 }
