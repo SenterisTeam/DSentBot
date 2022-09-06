@@ -1,4 +1,6 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Net.Http.Headers;
 using Discord.Audio;
 using DSentBot.Models;
 
@@ -9,6 +11,11 @@ public class WebMusicPlayer : IMusicPlayer
     private readonly FFmpegCollection _ffmpegCollection;
     private readonly ILogger<WebMusicPlayer> _logger;
 
+    private HttpClient _client = new();
+    private ConcurrentDictionary<int, MapElement> _chuckMap = new();
+    private byte[] _array;
+    private long _length;
+
     public WebMusicPlayer(FFmpegCollection ffmpegCollection, ILogger<WebMusicPlayer> logger)
     {
         _ffmpegCollection = ffmpegCollection;
@@ -17,31 +24,155 @@ public class WebMusicPlayer : IMusicPlayer
 
     public async Task PlayAsync(Music music, IAudioClient audioClient)
     {
-        using (var client = new HttpClient())
-        using (var stream = client.GetStreamAsync(music.Path))
-        using (var ffmpeg = CreateStream(stream.Result))
+        _chuckMap.Clear();
+        _length = (long) await GetContentLengthAsync(music.Path);
+        _array = new byte[_length];
+
+        var k = 1.5f;
+        long segmentPointer = 0;
+        long chunkSize = 128_000;
+        var counter = 0;
+        var tasksList = new List<Task>();
+
+        while (segmentPointer < _length)
+        {
+            tasksList.Add(StartDownloadTask(segmentPointer, chunkSize, counter, music.Path));
+
+            segmentPointer += chunkSize;
+            chunkSize = (long)Math.Floor(chunkSize * k);
+            counter++;
+        }
+
+        using (var ffmpeg = CreateStream())
         using (var output = ffmpeg.StandardOutput.BaseStream)
         using (var discord = audioClient.CreatePCMStream(AudioApplication.Mixed, bitrate: 131072, bufferMillis: 10, packetLoss: 0)) // Default bitrate is 96*1024
         {
-            try { await output.CopyToAsync(discord); }
-            finally { await discord.FlushAsync(); }
-        }
-    }
-    private Process CreateStream(Stream stream)
-    {
-        _logger.LogInformation("FFmpeg getting..");
-        var process = _ffmpegCollection.GetProcess();
-        _logger.LogInformation("Stream started");
+            try
+            {
+                // var buffer = new byte[16 * 1024];
+                // int read;
+                // while ((read = await output.ReadAsync(buffer, 0, 16 * 1024)) > 0)
+                // {
+                //     await discord.WriteAsync(buffer, 0, read);
+                // }
 
-        stream.CopyToAsync(process.StandardInput.BaseStream);
+                await output.CopyToAsync(discord);
+            }
+            finally
+            {
+                await discord.FlushAsync();
+            }
+        }
+
+        // TODO it doesn't finish
+    }
+
+    private Process CreateStream()
+    {
+        var process = _ffmpegCollection.GetProcess();
+
+        Task.Run(async () =>
+        {
+            long downloadedPointer = 0;
+
+            while (downloadedPointer + 1023 < _length)
+            {
+                if (IsRangeReady(downloadedPointer, downloadedPointer + 1023))
+                {
+                    await process.StandardInput.BaseStream.WriteAsync(_array, (int)downloadedPointer, 1024);
+                    downloadedPointer += 1024;
+                }
+                else
+                {
+                    await Task.Delay(100);
+                }
+            }
+            
+            process.StandardInput.BaseStream.Close();
+        });
 
         return process;
     }
 
-    private MemoryStream CreateMemoryStream(Stream input)
+    private async Task<long?> GetContentLengthAsync(string requestUri, bool ensureSuccess = true)
     {
-        var stream = new MemoryStream();
-        input.CopyToAsync(stream);
-        return stream;
+        using (var request = new HttpRequestMessage(HttpMethod.Head, requestUri))
+        {
+            var response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+            if (ensureSuccess)
+                response.EnsureSuccessStatusCode();
+            return response.Content.Headers.ContentLength;
+        }
     }
+
+    bool IsRangeReady(long start, long end)
+    {
+        var startSegment = FindSegment(start);
+        var endSegment = FindSegment(end);
+
+        if (startSegment.Key == endSegment.Key)
+        {
+            var readyPointer = endSegment.Value.SegmentPointer + endSegment.Value.DownloadedBytesCount;
+            // Console.WriteLine($"Current {endSegment.Key} | {readyPointer} | {end}");
+            return end <= readyPointer;
+        }
+        else
+        {
+            var startSegmentReady = startSegment.Value.DownloadedBytesCount == startSegment.Value.ChunkSize;
+            var endSegmentReady = end <= endSegment.Value.SegmentPointer + endSegment.Value.DownloadedBytesCount;
+            return startSegmentReady && endSegmentReady;
+        }
+    }
+
+    KeyValuePair<int, MapElement> FindSegment(long pointer) => _chuckMap.OrderByDescending(e => e.Key).First(e => e.Value.SegmentPointer <= pointer);
+
+    Task StartDownloadTask(long segmentPointerL, long chunkSizeL, int counter, string url)
+    {
+        var currentChunkSize = Math.Min(chunkSizeL, _length - segmentPointerL);
+        var currentSegmentPointer = segmentPointerL;
+
+        _chuckMap.TryAdd(counter, new MapElement()
+        {
+            ChunkSize = currentChunkSize,
+            SegmentPointer = currentSegmentPointer,
+            DownloadedBytesCount = 0
+        });
+
+        return Task.Run(async () =>
+        {
+            var from = currentSegmentPointer;
+            var to = currentSegmentPointer + currentChunkSize - 1;
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Range = new RangeHeaderValue(from, to);
+            using (request)
+            {
+                // Console.WriteLine($"Current Segment: {currentSegmentPointer}, Current size: {currentChunkSize}, Total lenght: {_length}");
+                // Download Stream
+                var response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+                if (response.IsSuccessStatusCode)
+                    response.EnsureSuccessStatusCode();
+                var stream = await response.Content.ReadAsStreamAsync();
+                var buffer = new byte[81920];
+                int bytesCopied;
+                int totalBytesCopied = 0;
+                do
+                {
+                    bytesCopied = await stream.ReadAsync(_array, (int)currentSegmentPointer + totalBytesCopied,
+                        (int)currentChunkSize - totalBytesCopied);
+                    totalBytesCopied += bytesCopied;
+                    if (_chuckMap.TryGetValue(counter, out var map))
+                    {
+                        map.DownloadedBytesCount = totalBytesCopied;
+                    }
+                } while (bytesCopied > 0);
+            }
+        });
+    }
+}
+
+class MapElement
+{
+    public long SegmentPointer;
+    public long ChunkSize;
+    public int DownloadedBytesCount;
 }
