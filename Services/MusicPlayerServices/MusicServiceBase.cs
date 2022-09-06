@@ -19,5 +19,5 @@ public abstract class MusicServiceBase : IMusicPlayer
 
     public abstract Task StopAsync();
 
-    public abstract Task StartAsync(CancellationToken cancellationToken, IAudioClient audioClient, Music music);
+    public abstract Task StartAsync(CancellationToken cancellationToken, IAudioClient audioClient, ulong guildID, Music music);
 }

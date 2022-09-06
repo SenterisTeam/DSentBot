@@ -19,7 +19,7 @@ public class MusicPlayerCollection : IHostedService
     public void Add(ulong guildID, IAudioClient audioClient, Music music)
     {
         var musicPlayer = _serviceProvider.GetRequiredService<IMusicPlayer>();
-        musicPlayer.StartAsync(_cancellationToken, audioClient, music);
+        musicPlayer.StartAsync(_cancellationToken, audioClient, guildID, music);
         _musicPlayers.TryAdd(guildID, musicPlayer);
 
     }
@@ -28,6 +28,13 @@ public class MusicPlayerCollection : IHostedService
     {
         _musicPlayers.TryGetValue(guildID, out var musicPlayer);
         return musicPlayer;
+    }
+
+    public Task Remove(ulong guildID)
+    {
+        _musicPlayers.Remove(guildID, out _);
+
+        return Task.CompletedTask;
     }
 
     public Task StartAsync(CancellationToken cancellationToken)

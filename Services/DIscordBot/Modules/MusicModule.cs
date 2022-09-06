@@ -41,4 +41,13 @@ public class MusicModule : ModuleBase<SocketCommandContext>
             await player.AddToQueue(await music);
         }
     }
+
+    [Command("stop", RunMode = RunMode.Async)]
+    [Summary("Disconnect bot from guild voice channel")]
+    public async Task StopMusic()
+    {
+        IMusicPlayer player = _mpCollection.Get(Context.Guild.Id);
+        if (player != null) await player.StopAsync();
+        else await ReplyAsync("Bot is not connected!");
+    }
 }

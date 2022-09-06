@@ -8,13 +8,15 @@ public class WebToFFmpegPlayer: MusicServiceBase
 {
     private IAudioClient _audioClient;
     private readonly FFmpegCollection _ffmpegCollection;
+    private readonly MusicPlayerCollection _musicPlayerCollection;
     private readonly ILogger<WebToFFmpegPlayer> _logger;
 
     protected Queue<Music> _musicQueue { get; set; }
 
-    public WebToFFmpegPlayer(FFmpegCollection ffmpegCollection, ILogger<WebToFFmpegPlayer> logger)
+    public WebToFFmpegPlayer(FFmpegCollection ffmpegCollection, MusicPlayerCollection musicPlayerCollection, ILogger<WebToFFmpegPlayer> logger)
     {
         _ffmpegCollection = ffmpegCollection;
+        _musicPlayerCollection = musicPlayerCollection;
         _logger = logger;
 
         _musicQueue = new Queue<Music>();
@@ -74,11 +76,14 @@ public class WebToFFmpegPlayer: MusicServiceBase
     public override async Task StopAsync()
     {
         await _audioClient.StopAsync();
+
+        _musicPlayerCollection.Remove(GuildID);
     }
 
-    public override async Task StartAsync(CancellationToken cancellationToken, IAudioClient audioClient, Music music)
+    public override async Task StartAsync(CancellationToken cancellationToken, IAudioClient audioClient, ulong guildID, Music music)
     {
         _audioClient = audioClient;
+        GuildID = guildID;
 
         AddToQueue(music);
         Player(cancellationToken);

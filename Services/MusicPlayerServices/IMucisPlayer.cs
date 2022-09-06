@@ -13,5 +13,5 @@ public interface IMusicPlayer
     public Task SkipMusic();
     public Task StopAsync();
 
-    public Task StartAsync(CancellationToken cancellationToken, IAudioClient audioClient, Music music);
+    public Task StartAsync(CancellationToken cancellationToken, IAudioClient audioClient, ulong guildID, Music music);
 }
