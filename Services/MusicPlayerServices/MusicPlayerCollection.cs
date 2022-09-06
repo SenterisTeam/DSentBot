@@ -14,17 +14,17 @@ public class MusicPlayerCollection : IHostedService
         _serviceProvider = serviceProvider;
     }
 
-    ConcurrentDictionary<ulong, IMusicPlayer> _musicPlayers = new ();
+    ConcurrentDictionary<ulong, MusicPlayerManager> _musicPlayers = new ();
 
     public void Add(ulong guildID, IAudioClient audioClient, Music music)
     {
-        var musicPlayer = _serviceProvider.GetRequiredService<IMusicPlayer>();
+        var musicPlayer = _serviceProvider.GetRequiredService<MusicPlayerManager>();
         musicPlayer.StartAsync(_cancellationToken, audioClient, guildID, music);
         _musicPlayers.TryAdd(guildID, musicPlayer);
 
     }
 
-    public IMusicPlayer Get(ulong guildID)
+    public MusicPlayerManager Get(ulong guildID)
     {
         _musicPlayers.TryGetValue(guildID, out var musicPlayer);
         return musicPlayer;

@@ -29,8 +29,8 @@ public class MusicModule : ModuleBase<SocketCommandContext>
         var music = _provider.GetRequiredService<IMusicGetter>().GetMusic(search); // Will ber GetServices later
 
         if (music == null) return;
-        IMusicPlayer player = _mpCollection.Get(Context.Guild.Id);
-        if (player == null)
+        MusicPlayerManager playerManager = _mpCollection.Get(Context.Guild.Id);
+        if (playerManager == null)
         {
             Task<IAudioClient> audioClient = channel.ConnectAsync();
             await Task.WhenAll(music, audioClient);
@@ -38,7 +38,7 @@ public class MusicModule : ModuleBase<SocketCommandContext>
         }
         else
         {
-            await player.AddToQueue(await music);
+            await playerManager.AddToQueue(await music);
         }
     }
 
@@ -46,8 +46,8 @@ public class MusicModule : ModuleBase<SocketCommandContext>
     [Summary("Disconnect bot from guild voice channel")]
     public async Task StopMusic()
     {
-        IMusicPlayer player = _mpCollection.Get(Context.Guild.Id);
-        if (player != null) await player.StopAsync();
+        MusicPlayerManager playerManager = _mpCollection.Get(Context.Guild.Id);
+        if (playerManager != null) await playerManager.StopAsync();
         else await ReplyAsync("Bot is not connected!");
     }
 }
