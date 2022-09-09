@@ -40,10 +40,10 @@ var host = Host.CreateDefaultBuilder()
         services.AddHostedService<DiscordHostedService>();
         services.AddHostedService<CommandHandlerService>();
 
-        services.AddScoped<IMusicGetter, YouTubeUrlMusicGetter>();
-        services.AddScoped<IMusicGetter, YouTubeSearchMusicGetter>();
-        services.AddScoped<MusicPlayerManager>();
-        services.AddScoped<IMusicPlayer, WebMusicPlayer>();
+        services.AddTransient<IMusicGetter, YouTubeUrlMusicGetter>();
+        services.AddTransient<IMusicGetter, YouTubeSearchMusicGetter>();
+        services.AddTransient<MusicPlayerManager>();
+        services.AddTransient<IMusicPlayer, WebMusicPlayer>();
 
         services.AddSingleton<MusicPlayerCollection>();
         services.AddHostedService<MusicPlayerCollection>(c => c.GetRequiredService<MusicPlayerCollection>());
