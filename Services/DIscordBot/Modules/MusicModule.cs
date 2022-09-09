@@ -22,10 +22,10 @@ public class MusicModule : ModuleBase<SocketCommandContext>
     
     [Command("play", RunMode = RunMode.Async)]
     [Summary("Add bot to vc and add music to queue")]
-    public async Task<RuntimeResult> PlayMusicAsync(IVoiceChannel channel = null, params string[] search)
+    public async Task<RuntimeResult> PlayMusicAsync(params string[] search)
     {
         // Get the audio channel
-        channel = channel ?? (Context.User as IGuildUser)?.VoiceChannel;
+        IVoiceChannel channel = (Context.User as IGuildUser)?.VoiceChannel;
         if (channel == null) return Result.FromError("Connect to a voice channel first!");
 
         if (search.Length == 0) return Result.FromError("Write name or url of music!");

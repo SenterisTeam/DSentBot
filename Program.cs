@@ -41,6 +41,7 @@ var host = Host.CreateDefaultBuilder()
         services.AddHostedService<CommandHandlerService>();
 
         services.AddScoped<IMusicGetter, YouTubeUrlMusicGetter>();
+        services.AddScoped<IMusicGetter, YouTubeSearchMusicGetter>();
         services.AddScoped<MusicPlayerManager>();
         services.AddScoped<IMusicPlayer, WebMusicPlayer>();
 
