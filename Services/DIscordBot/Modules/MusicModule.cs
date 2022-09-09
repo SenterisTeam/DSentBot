@@ -47,6 +47,8 @@ public class MusicModule : ModuleBase<SocketCommandContext>
             await playerManager.AddToQueue(await music);
         }
 
+        await ReplyAsync($"Added to queue: \n{music.Result.Name}\n{music.Result.Url}");
+
         return null;
     }
 
