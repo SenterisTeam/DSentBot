@@ -1,4 +1,5 @@
 using System.Reflection;
+using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 
@@ -24,10 +25,19 @@ public class CommandHandlerService : BackgroundService
     {
         using (var scope = _provider.CreateScope())
         {
-            _logger.LogInformation("Execute CommandHandlerService");
+            _logger.LogInformation("Starting CommandHandlerService");
             _client.MessageReceived += HandleCommandAsync;
 
             await _commands.AddModulesAsync(assembly: Assembly.GetEntryAssembly(), services: scope.ServiceProvider);
+            _commands.CommandExecuted += OnCommandExecutedAsync;
+        }
+    }
+
+    private async Task OnCommandExecutedAsync(Optional<CommandInfo> command, ICommandContext context, IResult result)
+    {
+        if (!string.IsNullOrEmpty(result?.ErrorReason))
+        {
+            await context.Channel.SendMessageAsync(result.ErrorReason);
         }
     }
 
@@ -46,7 +56,7 @@ public class CommandHandlerService : BackgroundService
             message.Author.IsBot)
             return;
 
-        _logger.LogInformation("cmd: " + message);
+        _logger.LogInformation("[CommandHandlerService] CMD: {cmd}", message);
 
         // Create a WebSocket-based command context based on the message
         var context = new SocketCommandContext(_client, message);
