@@ -11,11 +11,13 @@ public class MusicModule : ModuleBase<SocketCommandContext>
 {
     private readonly IServiceProvider _provider;
     private readonly MusicPlayerCollection _mpCollection;
+    private readonly ILogger<MusicModule> _logger;
 
-    public MusicModule(IServiceProvider provider, MusicPlayerCollection mpCollection)
+    public MusicModule(IServiceProvider provider, MusicPlayerCollection mpCollection, ILogger<MusicModule> logger)
     {
         _provider = provider;
         _mpCollection = mpCollection;
+        _logger = logger;
     }
     
     [Command("play", RunMode = RunMode.Async)]
@@ -33,8 +35,8 @@ public class MusicModule : ModuleBase<SocketCommandContext>
         if (playerManager == null)
         {
             Task<IAudioClient> audioClient = channel.ConnectAsync();
-            await Task.WhenAll(music, audioClient);
-            _mpCollection.Add(Context.Guild.Id, audioClient.Result, music.Result);
+            await music;
+            _mpCollection.Add(Context.Guild.Id, audioClient, music.Result);
         }
         else
         {

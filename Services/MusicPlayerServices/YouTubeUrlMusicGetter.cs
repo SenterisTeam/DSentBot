@@ -8,6 +8,13 @@ namespace DSentBot.Services.MusicPlayerServices;
 
 public class YouTubeUrlMusicGetter : IMusicGetter
 {
+    private readonly ILogger<YouTubeUrlMusicGetter> _logger;
+
+    public YouTubeUrlMusicGetter(ILogger<YouTubeUrlMusicGetter> logger)
+    {
+        _logger = logger;
+    }
+
     public async Task<Music> GetMusic(string search)
     {
         var youtube = YouTube.Default;

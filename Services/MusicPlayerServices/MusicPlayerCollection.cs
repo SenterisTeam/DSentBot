@@ -16,10 +16,10 @@ public class MusicPlayerCollection : IHostedService
 
     ConcurrentDictionary<ulong, MusicPlayerManager> _musicPlayers = new ();
 
-    public void Add(ulong guildID, IAudioClient audioClient, Music music)
+    public void Add(ulong guildID, Task<IAudioClient> audioClient, Music music)
     {
         var musicPlayer = _serviceProvider.GetRequiredService<MusicPlayerManager>();
-        musicPlayer.StartAsync(_cancellationToken, audioClient, guildID, music);
+        Task.Run(async () => await musicPlayer.StartAsync(_cancellationToken, audioClient, guildID, music));
         _musicPlayers.TryAdd(guildID, musicPlayer);
 
     }

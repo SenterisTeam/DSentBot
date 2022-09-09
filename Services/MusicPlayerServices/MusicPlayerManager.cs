@@ -8,7 +8,7 @@ public class MusicPlayerManager
 {
     public ulong GuildID;
 
-    private IAudioClient _audioClient;
+    private Task<IAudioClient> _audioClient;
     private readonly MusicPlayerCollection _musicPlayerCollection;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<MusicPlayerManager> _logger;
@@ -53,12 +53,12 @@ public class MusicPlayerManager
 
     public async Task StopAsync()
     {
-        await _audioClient.StopAsync();
+        await (await _audioClient).StopAsync();
 
         _musicPlayerCollection.Remove(GuildID);
     }
 
-    public async Task StartAsync(CancellationToken cancellationToken, IAudioClient audioClient, ulong guildID, Music music)
+    public async Task StartAsync(CancellationToken cancellationToken, Task<IAudioClient> audioClient, ulong guildID, Music music)
     {
         _audioClient = audioClient;
         GuildID = guildID;

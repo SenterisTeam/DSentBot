@@ -30,7 +30,16 @@ public class DiscordHostedService : IHostedService
 
             _client.Log += (LogMessage msg) =>
             {
-                _logger.LogDebug(msg.ToString());
+                LogLevel level = msg.Severity switch
+                {
+                    LogSeverity.Critical => LogLevel.Critical,
+                    LogSeverity.Error => LogLevel.Error,
+                    LogSeverity.Warning => LogLevel.Warning,
+                    LogSeverity.Info => LogLevel.Information,
+                    LogSeverity.Verbose => LogLevel.Debug,
+                    LogSeverity.Debug => LogLevel.Trace
+                };
+                _logger.Log<LogMessage>(level, new EventId(), msg, msg.Exception, (m, e) => $"[{m.Source}] {m.Message}");
                 return Task.CompletedTask;
             };
 

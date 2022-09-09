@@ -5,5 +5,5 @@ namespace DSentBot.Services.MusicPlayerServices;
 
 public interface IMusicPlayer
 {
-    Task PlayAsync(Music music, IAudioClient audioClient);
+    Task PlayAsync(Music music, Task<IAudioClient>  audioClient);
 }

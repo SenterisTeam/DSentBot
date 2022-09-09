@@ -8,10 +8,15 @@ using DSentBot.Services.DiscordBot.Configurations;
 using DSentBot.Services.MusicPlayerServices;
 using Microsoft.Extensions.Logging.Configuration;
 using Microsoft.Extensions.Options;
+using Serilog;
 
 
 var host = Host.CreateDefaultBuilder()
-    .ConfigureLogging(l => l.AddDebug().SetMinimumLevel(LogLevel.Debug))
+    .UseSerilog((hostingContext, services, loggerConfiguration) => loggerConfiguration
+        .ReadFrom.Configuration(hostingContext.Configuration)
+        .MinimumLevel.Debug()
+        .Enrich.FromLogContext()
+        .WriteTo.Console())
     .ConfigureServices((context, services) =>
     {
         services.Configure<DiscordHostConfiguration>(c =>

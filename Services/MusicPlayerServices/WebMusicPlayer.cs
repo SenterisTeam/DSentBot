@@ -22,8 +22,10 @@ public class WebMusicPlayer : IMusicPlayer
         _logger = logger;
     }
 
-    public async Task PlayAsync(Music music, IAudioClient audioClient)
+    public async Task PlayAsync(Music music, Task<IAudioClient> audioClient)
     {
+        _logger.LogInformation($"Start Play");
+        
         _chuckMap.Clear();
         _length = (long) await GetContentLengthAsync(music.Path);
         _array = new byte[_length];
@@ -45,7 +47,7 @@ public class WebMusicPlayer : IMusicPlayer
 
         using (var ffmpeg = CreateStream())
         using (var output = ffmpeg.StandardOutput.BaseStream)
-        using (var discord = audioClient.CreatePCMStream(AudioApplication.Mixed, bitrate: 131072, bufferMillis: 10, packetLoss: 0)) // Default bitrate is 96*1024
+        using (var discord = (await audioClient).CreatePCMStream(AudioApplication.Mixed, bitrate: 131072, bufferMillis: 10, packetLoss: 0)) // Default bitrate is 96*1024
         {
             try
             {
@@ -55,7 +57,7 @@ public class WebMusicPlayer : IMusicPlayer
                 // {
                 //     await discord.WriteAsync(buffer, 0, read);
                 // }
-
+                _logger.LogInformation($"Start Copying");
                 await output.CopyToAsync(discord);
             }
             finally
@@ -63,8 +65,6 @@ public class WebMusicPlayer : IMusicPlayer
                 await discord.FlushAsync();
             }
         }
-
-        // TODO it doesn't finish
     }
 
     private Process CreateStream()
@@ -79,6 +79,7 @@ public class WebMusicPlayer : IMusicPlayer
             {
                 if (IsRangeReady(downloadedPointer, downloadedPointer + 1023))
                 {
+                    if (downloadedPointer == 0) _logger.LogInformation($"First network read");
                     await process.StandardInput.BaseStream.WriteAsync(_array, (int)downloadedPointer, 1024);
                     downloadedPointer += 1024;
                 }
