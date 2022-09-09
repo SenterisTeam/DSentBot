@@ -22,14 +22,18 @@ public class MusicModule : ModuleBase<SocketCommandContext>
     
     [Command("play", RunMode = RunMode.Async)]
     [Summary("Add bot to vc and add music to queue")]
-    public async Task<RuntimeResult> PlayMusicAsync(string search, IVoiceChannel channel = null)
+    public async Task<RuntimeResult> PlayMusicAsync(IVoiceChannel channel = null, params string[] search)
     {
         // Get the audio channel
         channel = channel ?? (Context.User as IGuildUser)?.VoiceChannel;
         if (channel == null) return Result.FromError("Connect to a voice channel first!");
 
-        var music = _provider.GetRequiredService<IMusicGetter>().GetMusic(search); // Will ber GetServices later
+        if (search.Length == 0) return Result.FromError("Write name or url of music!");
 
+        Task<Music> music = null;
+        if (search[0].Contains("youtube.com"))
+            music = _provider.GetRequiredService<IMusicGetter>().GetMusicAsync(search[0]); // Will ber GetServices later
+        else music = _provider.GetRequiredService<IMusicGetter>().GetMusicAsync(string.Join(' ', search));
         if (music == null) return Result.FromError("Music not found");
         MusicPlayerManager playerManager = _mpCollection.Get(Context.Guild.Id);
         if (playerManager == null)

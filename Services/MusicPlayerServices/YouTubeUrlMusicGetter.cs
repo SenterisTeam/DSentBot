@@ -15,14 +15,16 @@ public class YouTubeUrlMusicGetter : IMusicGetter
         _logger = logger;
     }
 
-    public async Task<Music> GetMusic(string search)
+    public async Task<Music> GetMusicAsync(string search)
     {
         var youtube = YouTube.Default;
 
         try
         {
             var video = await youtube.GetVideoAsync(search);
-            return new Music(video.Title, video.Uri, search);
+            Music music = new Music(video.Title, search, search, null);
+            music.Path = video.Uri;
+            return music;
         }
         catch (ArgumentException e) { }
         catch (UnavailableStreamException e) { }
