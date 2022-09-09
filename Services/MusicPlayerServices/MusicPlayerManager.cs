@@ -13,7 +13,7 @@ public class MusicPlayerManager
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<MusicPlayerManager> _logger;
 
-    protected Queue<Music> _musicQueue { get; set; }
+    public Queue<Music> MusicQueue { get; private set; }
 
     public MusicPlayerManager(MusicPlayerCollection musicPlayerCollection, IServiceProvider serviceProvider, ILogger<MusicPlayerManager> logger)
     {
@@ -21,14 +21,14 @@ public class MusicPlayerManager
         _serviceProvider = serviceProvider;
         _logger = logger;
 
-        _musicQueue = new Queue<Music>();
+        MusicQueue = new Queue<Music>();
     }
 
     protected async Task Player(CancellationToken cancellationToken)
     {
-        while (_musicQueue.Count != 0 && !cancellationToken.IsCancellationRequested)
+        while (MusicQueue.Count != 0 && !cancellationToken.IsCancellationRequested)
         {
-            Music music = _musicQueue.Dequeue();
+            Music music = MusicQueue.Dequeue();
 
             // Take Player and play
             IMusicPlayer player = _serviceProvider.GetRequiredService<IMusicPlayer>();
@@ -40,7 +40,7 @@ public class MusicPlayerManager
 
     public Task AddToQueue(Music music)
     {
-        _musicQueue.Enqueue(music);
+        MusicQueue.Enqueue(music);
 
         return Task.CompletedTask;
     }

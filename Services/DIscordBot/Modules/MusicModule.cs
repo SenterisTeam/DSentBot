@@ -60,4 +60,29 @@ public class MusicModule : ModuleBase<SocketCommandContext>
         if (playerManager != null) await playerManager.StopAsync();
         else await ReplyAsync("Bot is not connected!");
     }
+
+    [Command("queue", RunMode = RunMode.Async)]
+    [Summary("Show music queue")]
+    public async Task MusicQueue()
+    {
+        MusicPlayerManager playerManager = _mpCollection.Get(Context.Guild.Id);
+
+        if (playerManager == null)
+        {
+            await ReplyAsync("The queue is empty");
+        }
+        else
+        {
+            EmbedBuilder embed = new EmbedBuilder{
+                Title = "Music queue:"
+            };
+            int i = 1;
+            foreach (var music in playerManager.MusicQueue)
+            {
+                embed.AddField($"{i}) {music.Name}", music.Url, false);
+                i++;
+            }
+            await ReplyAsync(embed: embed.Build());
+        }
+    }
 }
