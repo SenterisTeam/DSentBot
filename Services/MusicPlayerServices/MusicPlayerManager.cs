@@ -36,6 +36,8 @@ public class MusicPlayerManager
 
             // TODO it doesn't finish
         }
+
+        await StopAsync();
     }
 
     public Task AddToQueue(Music music)
