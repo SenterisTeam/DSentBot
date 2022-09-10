@@ -32,7 +32,7 @@ public class WebMusicPlayer : IMusicPlayer
 
         var k = 1.5f;
         long segmentPointer = 0;
-        long chunkSize = 128_000;
+        long chunkSize = 64_000;
         var counter = 0;
         var tasksList = new List<Task>();
 
@@ -47,7 +47,7 @@ public class WebMusicPlayer : IMusicPlayer
 
         using (var ffmpeg = CreateStream())
         using (var output = ffmpeg.StandardOutput.BaseStream)
-        using (var discord = (await audioClient).CreatePCMStream(AudioApplication.Mixed, bitrate: 131072, bufferMillis: 10, packetLoss: 0)) // Default bitrate is 96*1024
+        using (var discord = (await audioClient).CreatePCMStream(AudioApplication.Mixed, bitrate: 131072, bufferMillis: 2500, packetLoss: 0)) // Default bitrate is 96*1024
         {
             try
             {
@@ -85,7 +85,7 @@ public class WebMusicPlayer : IMusicPlayer
                 }
                 else
                 {
-                    await Task.Delay(100);
+                    await Task.Delay(1000); // TODO Test
                 }
             }
             
@@ -153,7 +153,7 @@ public class WebMusicPlayer : IMusicPlayer
                 if (response.IsSuccessStatusCode)
                     response.EnsureSuccessStatusCode();
                 var stream = await response.Content.ReadAsStreamAsync();
-                var buffer = new byte[81920];
+                var buffer = new byte[181920]; // TODO Test
                 int bytesCopied;
                 int totalBytesCopied = 0;
                 do

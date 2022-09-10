@@ -31,7 +31,7 @@ public class MusicModule : ModuleBase<SocketCommandContext>
         if (search.Length == 0) return Result.FromError("Write name or url of music!");
 
         Task<Music> music = null;
-        if (search[0].Contains("youtube.com"))
+        if (search[0].Contains("youtube.com") || search[0].Contains("youtu.be"))
             music = _provider.GetRequiredService<IMusicGetter>().GetMusicAsync(search[0]); // Will ber GetServices later
         else music = _provider.GetRequiredService<IMusicGetter>().GetMusicAsync(string.Join(' ', search));
         if (music == null) return Result.FromError("Music not found");
