@@ -38,7 +38,6 @@ public class MusicPlayerManager
             _cancellationTokenMusicSrc = new CancellationTokenSource();
             _cancellationTokenMusic = _cancellationTokenMusicSrc.Token;
             await player.PlayAsync(music, _audioClient, _cancellationTokenMusic);
-            Console.WriteLine("123");
         }
 
         await StopAsync();
