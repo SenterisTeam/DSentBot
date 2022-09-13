@@ -13,6 +13,9 @@ public class MusicPlayerManager
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<MusicPlayerManager> _logger;
 
+    private CancellationTokenSource _cancellationTokenMusicSrc;
+    private CancellationToken _cancellationTokenMusic;
+
     public Queue<Music> MusicQueue { get; private set; }
 
     public MusicPlayerManager(MusicPlayerCollection musicPlayerCollection, IServiceProvider serviceProvider, ILogger<MusicPlayerManager> logger)
@@ -32,9 +35,10 @@ public class MusicPlayerManager
 
             // Take Player and play
             IMusicPlayer player = _serviceProvider.GetRequiredService<IMusicPlayer>();
-            await player.PlayAsync(music, _audioClient);
-
-            // TODO it doesn't finish
+            _cancellationTokenMusicSrc = new CancellationTokenSource();
+            _cancellationTokenMusic = _cancellationTokenMusicSrc.Token;
+            await player.PlayAsync(music, _audioClient, _cancellationTokenMusic);
+            Console.WriteLine("123");
         }
 
         await StopAsync();
@@ -49,12 +53,13 @@ public class MusicPlayerManager
 
     public Task SkipMusic()
     {
-        _logger.LogInformation("SkipMusic is not implemented");
+        _cancellationTokenMusicSrc.Cancel();
         return Task.CompletedTask;
     }
 
     public async Task StopAsync()
     {
+        _cancellationTokenMusicSrc.Cancel();
         await (await _audioClient).StopAsync();
 
         _musicPlayerCollection.Remove(GuildID);

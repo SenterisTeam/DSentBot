@@ -85,4 +85,13 @@ public class MusicModule : ModuleBase<SocketCommandContext>
             await ReplyAsync(embed: embed.Build());
         }
     }
+
+    [Command("skip", RunMode = RunMode.Async)]
+    [Summary("Skip music")]
+    public async Task SkipMusic()
+    {
+        MusicPlayerManager playerManager = _mpCollection.Get(Context.Guild.Id);
+        if (playerManager != null) playerManager.SkipMusic();
+        else await ReplyAsync("Bot is not connected!");
+    }
 }

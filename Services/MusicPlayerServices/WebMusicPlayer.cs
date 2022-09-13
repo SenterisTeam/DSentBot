@@ -10,11 +10,14 @@ public class WebMusicPlayer : IMusicPlayer
 {
     private readonly FFmpegCollection _ffmpegCollection;
     private readonly ILogger<WebMusicPlayer> _logger;
+    private CancellationToken _cancellationToken;
 
     private HttpClient _client = new();
     private ConcurrentDictionary<int, MapElement> _chuckMap = new();
     private byte[] _array;
     private long _length;
+
+    private Process _process;
 
     public WebMusicPlayer(FFmpegCollection ffmpegCollection, ILogger<WebMusicPlayer> logger)
     {
@@ -22,8 +25,9 @@ public class WebMusicPlayer : IMusicPlayer
         _logger = logger;
     }
 
-    public async Task PlayAsync(Music music, Task<IAudioClient> audioClient)
+    public async Task PlayAsync(Music music, Task<IAudioClient> audioClient, CancellationToken cancellationToken)
     {
+        _cancellationToken = cancellationToken;
         _logger.LogInformation($"Start Play");
         
         _chuckMap.Clear();
@@ -58,8 +62,9 @@ public class WebMusicPlayer : IMusicPlayer
                 //     await discord.WriteAsync(buffer, 0, read);
                 // }
                 _logger.LogInformation($"Start Copying");
-                await output.CopyToAsync(discord);
+                await output.CopyToAsync(discord, _cancellationToken);
             }
+            catch (OperationCanceledException e) {_process.StandardInput.BaseStream.Close();}
             finally
             {
                 await discord.FlushAsync();
@@ -69,30 +74,30 @@ public class WebMusicPlayer : IMusicPlayer
 
     private Process CreateStream()
     {
-        var process = _ffmpegCollection.GetProcess();
+        _process = _ffmpegCollection.GetProcess();
 
-        Task.Run(async () =>
+        Task.Factory.StartNew(async () =>
         {
             long downloadedPointer = 0;
 
-            while (downloadedPointer + 1023 < _length)
+            while (downloadedPointer + 1023 < _length && !_cancellationToken.IsCancellationRequested)
             {
                 if (IsRangeReady(downloadedPointer, downloadedPointer + 1023))
                 {
                     if (downloadedPointer == 0) _logger.LogInformation($"First network read");
-                    await process.StandardInput.BaseStream.WriteAsync(_array, (int)downloadedPointer, 1024);
+                    await _process.StandardInput.BaseStream.WriteAsync(_array, (int)downloadedPointer, 1024);
                     downloadedPointer += 1024;
                 }
                 else
                 {
-                    await Task.Delay(1000); // TODO Test
+                    await Task.Delay(1000, _cancellationToken); // TODO Test
                 }
             }
             
-            process.StandardInput.BaseStream.Close();
-        });
+            _process.StandardInput.BaseStream.Close();
+        }, _cancellationToken);
 
-        return process;
+        return _process;
     }
 
     private async Task<long?> GetContentLengthAsync(string requestUri, bool ensureSuccess = true)
@@ -159,13 +164,13 @@ public class WebMusicPlayer : IMusicPlayer
                 do
                 {
                     bytesCopied = await stream.ReadAsync(_array, (int)currentSegmentPointer + totalBytesCopied,
-                        (int)currentChunkSize - totalBytesCopied);
+                        (int)currentChunkSize - totalBytesCopied, _cancellationToken);
                     totalBytesCopied += bytesCopied;
                     if (_chuckMap.TryGetValue(counter, out var map))
                     {
                         map.DownloadedBytesCount = totalBytesCopied;
                     }
-                } while (bytesCopied > 0);
+                } while (bytesCopied > 0 && !_cancellationToken.IsCancellationRequested);
             }
         });
     }
