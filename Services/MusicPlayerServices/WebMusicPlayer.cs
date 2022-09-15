@@ -10,6 +10,7 @@ public class WebMusicPlayer : IMusicPlayer
 {
     private readonly FFmpegCollection _ffmpegCollection;
     private readonly ILogger<WebMusicPlayer> _logger;
+    private readonly IHostEnvironment _hostEnvironment;
     private CancellationToken _cancellationToken;
 
     private HttpClient _client = new();
@@ -19,10 +20,11 @@ public class WebMusicPlayer : IMusicPlayer
 
     private Process _process;
 
-    public WebMusicPlayer(FFmpegCollection ffmpegCollection, ILogger<WebMusicPlayer> logger)
+    public WebMusicPlayer(FFmpegCollection ffmpegCollection, ILogger<WebMusicPlayer> logger, IHostEnvironment hostEnvironment)
     {
         _ffmpegCollection = ffmpegCollection;
         _logger = logger;
+        _hostEnvironment = hostEnvironment;
     }
 
     public async Task PlayAsync(Music music, Task<IAudioClient> audioClient, CancellationToken cancellationToken)
@@ -49,7 +51,7 @@ public class WebMusicPlayer : IMusicPlayer
             counter++;
         }
 
-        using (var ffmpeg = CreateStream())
+        using (var ffmpeg = CreateStream(music))
         using (var output = ffmpeg.StandardOutput.BaseStream)
         using (var discord = (await audioClient).CreatePCMStream(AudioApplication.Mixed, bitrate: 131072, bufferMillis: 2500, packetLoss: 0)) // Default bitrate is 96*1024
         {
@@ -63,6 +65,7 @@ public class WebMusicPlayer : IMusicPlayer
                 // }
                 _logger.LogInformation($"Start Copying");
                 await output.CopyToAsync(discord, _cancellationToken);
+
             }
             catch (OperationCanceledException e) {_process.StandardInput.BaseStream.Close();}
             finally
@@ -72,28 +75,33 @@ public class WebMusicPlayer : IMusicPlayer
         }
     }
 
-    private Process CreateStream()
+    private Process CreateStream(Music music)
     {
         _process = _ffmpegCollection.GetProcess();
 
         Task.Factory.StartNew(async () =>
         {
-            long downloadedPointer = 0;
-
-            while (downloadedPointer + 1023 < _length && !_cancellationToken.IsCancellationRequested)
+            using (var stream = new FileStream($"{_hostEnvironment.ContentRootPath}/music/{music.Id.ToString()}.mp4", FileMode.OpenOrCreate, FileAccess.Write, FileShare.Read, 181920, FileOptions.Asynchronous))
             {
-                if (IsRangeReady(downloadedPointer, downloadedPointer + 1023))
+                long downloadedPointer = 0;
+
+                while (downloadedPointer + 1023 < _length && !_cancellationToken.IsCancellationRequested)
                 {
-                    if (downloadedPointer == 0) _logger.LogInformation($"First network read");
-                    await _process.StandardInput.BaseStream.WriteAsync(_array, (int)downloadedPointer, 1024);
-                    downloadedPointer += 1024;
-                }
-                else
-                {
-                    await Task.Delay(1000, _cancellationToken); // TODO Test
+                    if (IsRangeReady(downloadedPointer, downloadedPointer + 1023))
+                    {
+                        if (downloadedPointer == 0) _logger.LogInformation($"First network read");
+                        Task dsWriteTask = _process.StandardInput.BaseStream.WriteAsync(_array, (int) downloadedPointer, 1024);
+                        Task fsWriteTask = stream.WriteAsync(_array, (int) downloadedPointer, 1024);
+                        await Task.WhenAll(dsWriteTask, fsWriteTask);
+                        downloadedPointer += 1024;
+                    }
+                    else
+                    {
+                        await Task.Delay(1000, _cancellationToken); // TODO Test
+                    }
                 }
             }
-            
+
             _process.StandardInput.BaseStream.Close();
         }, _cancellationToken);
 
