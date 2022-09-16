@@ -96,6 +96,9 @@ public class WebMusicPlayer : IMusicPlayer
             _dbContext.Musics.Add(music);
             await _dbContext.SaveChangesAsync();
 
+            if (!Directory.Exists(_hostEnvironment.ContentRootPath + @"\music"))
+                Directory.CreateDirectory(_hostEnvironment.ContentRootPath + @"\music");
+
             _musicConverterProcess = _ffmpegCollection.GetMusicConvertProcess(_hostEnvironment.ContentRootPath+music.LocalPath);
 
             long downloadedPointer = 0;
