@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Net.Http.Headers;
 using Discord.Audio;
 using DSentBot.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace DSentBot.Services.MusicPlayerServices;
 
@@ -11,6 +12,7 @@ public class WebMusicPlayer : IMusicPlayer
     private readonly FFmpegCollection _ffmpegCollection;
     private readonly ILogger<WebMusicPlayer> _logger;
     private readonly IHostEnvironment _hostEnvironment;
+    private readonly ApplicationDbContext _dbContext;
     private CancellationToken _cancellationToken;
 
     private HttpClient _client = new();
@@ -21,11 +23,12 @@ public class WebMusicPlayer : IMusicPlayer
     private Process _streamProcess;
     private Process _musicConverterProcess;
 
-    public WebMusicPlayer(FFmpegCollection ffmpegCollection, ILogger<WebMusicPlayer> logger, IHostEnvironment hostEnvironment)
+    public WebMusicPlayer(FFmpegCollection ffmpegCollection, ILogger<WebMusicPlayer> logger, IHostEnvironment hostEnvironment, ApplicationDbContext dbContext)
     {
         _ffmpegCollection = ffmpegCollection;
         _logger = logger;
         _hostEnvironment = hostEnvironment;
+        _dbContext = dbContext;
     }
 
     public async Task PlayAsync(Music music, Task<IAudioClient> audioClient, CancellationToken cancellationToken)
@@ -87,10 +90,14 @@ public class WebMusicPlayer : IMusicPlayer
     private Process CreateStream(Music music)
     {
         _streamProcess = _ffmpegCollection.GetStreamProcess();
-        _musicConverterProcess = _ffmpegCollection.GetMusicConvertProcess(_hostEnvironment.ContentRootPath+music.LocalPath);
 
         Task.Factory.StartNew(async () =>
         {
+            _dbContext.Musics.Add(music);
+            await _dbContext.SaveChangesAsync();
+
+            _musicConverterProcess = _ffmpegCollection.GetMusicConvertProcess(_hostEnvironment.ContentRootPath+music.LocalPath);
+
             long downloadedPointer = 0;
 
             while (downloadedPointer + 1023 < _length && !_cancellationToken.IsCancellationRequested)
@@ -98,7 +105,6 @@ public class WebMusicPlayer : IMusicPlayer
                 if (IsRangeReady(downloadedPointer, downloadedPointer + 1023))
                 {
                     if (downloadedPointer == 0) _logger.LogInformation($"First network read");
-                    //await _streamProcess.StandardInput.BaseStream.WriteAsync(_array, (int) downloadedPointer, 1024);
                     Task dsWriteTask = _streamProcess.StandardInput.BaseStream.WriteAsync(_array, (int) downloadedPointer, 1024);
                     Task fsWriteTask = _musicConverterProcess.StandardInput.BaseStream.WriteAsync(_array, (int) downloadedPointer, 1024);
                     await Task.WhenAll(dsWriteTask, fsWriteTask);
@@ -109,8 +115,12 @@ public class WebMusicPlayer : IMusicPlayer
                     await Task.Delay(1000, _cancellationToken); // TODO Test
                 }
             }
-
             _streamProcess.StandardInput.BaseStream.Close();
+            _musicConverterProcess.StandardInput.BaseStream.Close();
+            music.IsDownloaded = true;
+            _dbContext.SaveChangesAsync();
+
+
         }, _cancellationToken);
 
         return _streamProcess;
