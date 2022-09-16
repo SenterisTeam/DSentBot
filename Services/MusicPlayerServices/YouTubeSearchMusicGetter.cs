@@ -18,11 +18,9 @@ public class YouTubeSearchMusicGetter : IMusicGetter
         try
         {
             VideoSearchResult video = await youtube.Search.GetVideosAsync(search).FirstAsync();
-            Music music = new Music(video.Title, search, video.Url, video.Duration);
-
             //var videoStream = await youtube.Videos.GetAsync(video.Id); // TODO VideoLibrary -> YoutubeExplode
             var videoStream = await youtubevl.GetVideoAsync(video.Url);
-            music.Path = videoStream.Uri;
+            Music music = new Music(video.Title, video.Url, videoStream.Uri ,video.Duration);
             return music;
         }
         catch (ArgumentException e)

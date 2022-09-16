@@ -22,8 +22,7 @@ public class YouTubeUrlMusicGetter : IMusicGetter
         try
         {
             var video = await youtube.GetVideoAsync(search);
-            Music music = new Music(video.Title, search, search, null);
-            music.Path = video.Uri;
+            Music music = new Music(video.Title, search, video.Uri, null);
             return music;
         }
         catch (ArgumentException e) { }

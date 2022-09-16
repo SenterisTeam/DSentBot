@@ -6,17 +6,22 @@ public class Music
 {
     public long Id { get; set; } // key for DB
     public string Name { get; set; }
-    public string Path { get; set; }
+    //[NotMapped]
+    public string LocalPath => $"/music/{Id}.mp3";
     public string Url { get; set; }
-    [NotMapped]
+    //[NotMapped]
+    public string UriToStream { get; set; }
+    //[NotMapped]
     public TimeSpan? Duration { get; set; }
-    public string EnteredSearch { get; set; }
+    public long RequestsNumber { get; set; }
 
-    public Music(string name, string enteredSearch, string url, TimeSpan? duration)
+    public Music(string name, string url, string uriToStream, TimeSpan? duration)
     {
         Name = name;
-        EnteredSearch = enteredSearch;
         Url = url;
         Duration = duration;
+        UriToStream = uriToStream;
+
+        RequestsNumber = 1;
     }
 }

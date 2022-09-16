@@ -18,7 +18,8 @@ public class WebMusicPlayer : IMusicPlayer
     private byte[] _array;
     private long _length;
 
-    private Process _process;
+    private Process _streamProcess;
+    private Process _musicConverterProcess;
 
     public WebMusicPlayer(FFmpegCollection ffmpegCollection, ILogger<WebMusicPlayer> logger, IHostEnvironment hostEnvironment)
     {
@@ -33,9 +34,8 @@ public class WebMusicPlayer : IMusicPlayer
         _logger.LogInformation($"Start Play");
         
         _chuckMap.Clear();
-        _length = (long) await GetContentLengthAsync(music.Path);
+        _length = (long) await GetContentLengthAsync(music.UriToStream);
         _array = new byte[_length];
-
         var k = 1.5f;
         long segmentPointer = 0;
         long chunkSize = 64_000;
@@ -44,7 +44,7 @@ public class WebMusicPlayer : IMusicPlayer
 
         while (segmentPointer < _length)
         {
-            tasksList.Add(StartDownloadTask(segmentPointer, chunkSize, counter, music.Path));
+            tasksList.Add(StartDownloadTask(segmentPointer, chunkSize, counter, music.UriToStream));
 
             segmentPointer += chunkSize;
             chunkSize = (long)Math.Floor(chunkSize * k);
@@ -65,9 +65,18 @@ public class WebMusicPlayer : IMusicPlayer
                 // }
                 _logger.LogInformation($"Start Copying");
                 await output.CopyToAsync(discord, _cancellationToken);
-
             }
-            catch (OperationCanceledException e) {_process.StandardInput.BaseStream.Close();}
+            catch (OperationCanceledException e)
+            {
+                _streamProcess.StandardInput.BaseStream.Close();
+                _musicConverterProcess.StandardInput.BaseStream.Close();
+                try
+                {
+                    await Task.Delay(5000);
+                    File.Delete($"{_hostEnvironment.ContentRootPath}/music/{music.Id.ToString()}.mp3");
+                }
+                catch (Exception ex) { _logger.LogTrace($"{_hostEnvironment.ContentRootPath}/music/{music.Id.ToString()}.mp3 {ex.ToString()}"); }
+            }
             finally
             {
                 await discord.FlushAsync();
@@ -77,40 +86,39 @@ public class WebMusicPlayer : IMusicPlayer
 
     private Process CreateStream(Music music)
     {
-        _process = _ffmpegCollection.GetProcess();
+        _streamProcess = _ffmpegCollection.GetStreamProcess();
+        _musicConverterProcess = _ffmpegCollection.GetMusicConvertProcess(_hostEnvironment.ContentRootPath+music.LocalPath);
 
         Task.Factory.StartNew(async () =>
         {
-            using (var stream = new FileStream($"{_hostEnvironment.ContentRootPath}/music/{music.Id.ToString()}.mp4", FileMode.OpenOrCreate, FileAccess.Write, FileShare.Read, 181920, FileOptions.Asynchronous))
-            {
-                long downloadedPointer = 0;
+            long downloadedPointer = 0;
 
-                while (downloadedPointer + 1023 < _length && !_cancellationToken.IsCancellationRequested)
+            while (downloadedPointer + 1023 < _length && !_cancellationToken.IsCancellationRequested)
+            {
+                if (IsRangeReady(downloadedPointer, downloadedPointer + 1023))
                 {
-                    if (IsRangeReady(downloadedPointer, downloadedPointer + 1023))
-                    {
-                        if (downloadedPointer == 0) _logger.LogInformation($"First network read");
-                        Task dsWriteTask = _process.StandardInput.BaseStream.WriteAsync(_array, (int) downloadedPointer, 1024);
-                        Task fsWriteTask = stream.WriteAsync(_array, (int) downloadedPointer, 1024);
-                        await Task.WhenAll(dsWriteTask, fsWriteTask);
-                        downloadedPointer += 1024;
-                    }
-                    else
-                    {
-                        await Task.Delay(1000, _cancellationToken); // TODO Test
-                    }
+                    if (downloadedPointer == 0) _logger.LogInformation($"First network read");
+                    //await _streamProcess.StandardInput.BaseStream.WriteAsync(_array, (int) downloadedPointer, 1024);
+                    Task dsWriteTask = _streamProcess.StandardInput.BaseStream.WriteAsync(_array, (int) downloadedPointer, 1024);
+                    Task fsWriteTask = _musicConverterProcess.StandardInput.BaseStream.WriteAsync(_array, (int) downloadedPointer, 1024);
+                    await Task.WhenAll(dsWriteTask, fsWriteTask);
+                    downloadedPointer += 1024;
+                }
+                else
+                {
+                    await Task.Delay(1000, _cancellationToken); // TODO Test
                 }
             }
 
-            _process.StandardInput.BaseStream.Close();
+            _streamProcess.StandardInput.BaseStream.Close();
         }, _cancellationToken);
 
-        return _process;
+        return _streamProcess;
     }
 
-    private async Task<long?> GetContentLengthAsync(string requestUri, bool ensureSuccess = true)
+    private async Task<long?> GetContentLengthAsync(string requestUrl, bool ensureSuccess = true)
     {
-        using (var request = new HttpRequestMessage(HttpMethod.Head, requestUri))
+        using (var request = new HttpRequestMessage(HttpMethod.Head, requestUrl))
         {
             var response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
             if (ensureSuccess)
