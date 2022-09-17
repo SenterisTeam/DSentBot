@@ -33,6 +33,7 @@ public class WebMusicPlayer : IMusicPlayer
 
     public async Task PlayAsync(Music music, Task<IAudioClient> audioClient, CancellationToken cancellationToken)
     {
+        _logger.LogInformation("WebMusicPlayer started!");
         _cancellationToken = cancellationToken;
         _logger.LogInformation($"Start Play");
         
@@ -87,14 +88,19 @@ public class WebMusicPlayer : IMusicPlayer
         }
     }
 
-    private Process CreateStream(Music music)
+    private Process CreateStream(Music lmusic)
     {
         _streamProcess = _ffmpegCollection.GetStreamProcess();
 
         Task.Factory.StartNew(async () =>
         {
-            _dbContext.Musics.Add(music);
-            await _dbContext.SaveChangesAsync();
+            Music music = await _dbContext.Musics.FirstOrDefaultAsync(m => m.Url == lmusic.Url);
+            if (music == null)
+            {
+                _dbContext.Musics.Add(lmusic);
+                await _dbContext.SaveChangesAsync();
+                music = _dbContext.Musics.FirstOrDefault(m => m.Url == lmusic.Url); // Better to change it somehow
+            }
 
             if (!Directory.Exists(_hostEnvironment.ContentRootPath + @"\music"))
                 Directory.CreateDirectory(_hostEnvironment.ContentRootPath + @"\music");
@@ -120,8 +126,9 @@ public class WebMusicPlayer : IMusicPlayer
             }
             _streamProcess.StandardInput.BaseStream.Close();
             _musicConverterProcess.StandardInput.BaseStream.Close();
+
             music.IsDownloaded = true;
-            _dbContext.SaveChangesAsync();
+            _dbContext.SaveChanges();
 
 
         }, _cancellationToken);

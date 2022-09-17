@@ -45,7 +45,8 @@ var host = Host.CreateDefaultBuilder()
         services.AddTransient<IMusicGetter, YouTubeUrlMusicGetter>();
         services.AddTransient<IMusicGetter, YouTubeSearchMusicGetter>();
         services.AddTransient<MusicPlayerManager>();
-        services.AddTransient<IMusicPlayer, WebMusicPlayer>();
+        services.AddTransient<WebMusicPlayer>();
+        services.AddTransient<LocalMusicPlayer>();
 
         services.AddDbContext<ApplicationDbContext>(c => c.UseSqlite("Data Source=test.db"));
 
