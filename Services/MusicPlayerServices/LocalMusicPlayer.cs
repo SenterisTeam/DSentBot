@@ -9,15 +9,13 @@ public class LocalMusicPlayer : IMusicPlayer
 {
     private readonly FFmpegCollection _ffmpegCollection;
     private readonly ILogger<LocalMusicPlayer> _logger;
-    private readonly IHostEnvironment _hostEnvironment;
     private readonly ApplicationDbContext _dbContext;
     private CancellationToken _cancellationToken;
 
-    public LocalMusicPlayer(FFmpegCollection ffmpegCollection, ILogger<LocalMusicPlayer> logger, IHostEnvironment hostEnvironment, ApplicationDbContext dbContext)
+    public LocalMusicPlayer(FFmpegCollection ffmpegCollection, ILogger<LocalMusicPlayer> logger, ApplicationDbContext dbContext)
     {
         _ffmpegCollection = ffmpegCollection;
         _logger = logger;
-        _hostEnvironment = hostEnvironment;
         _dbContext = dbContext;
     }
 
@@ -28,7 +26,7 @@ public class LocalMusicPlayer : IMusicPlayer
 
         Music music = await _dbContext.Musics.FirstOrDefaultAsync(m => m.Url == lMusic.Url);
 
-        Process readerProcess = _ffmpegCollection.GetReadProcess(_hostEnvironment.ContentRootPath+music.LocalPath);
+        Process readerProcess = _ffmpegCollection.GetReadProcess(Path.GetFullPath(Path.Combine(".", music.LocalPath)));
 
         using (var discord = (await audioClient).CreatePCMStream(AudioApplication.Mixed, bitrate: 131072, bufferMillis: 1000, packetLoss: 0)) // Default bitrate is 96*1024
         {

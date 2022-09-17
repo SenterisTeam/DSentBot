@@ -7,27 +7,25 @@ namespace DSentBot.Services.MusicPlayerServices;
 
 public class MusicPlayerManager
 {
-    public ulong GuildID;
+    public ulong GuildId;
 
     private Task<IAudioClient> _audioClient;
     private readonly MusicPlayerCollection _musicPlayerCollection;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<MusicPlayerManager> _logger;
     private readonly ApplicationDbContext _dbContext;
-    private readonly IHostEnvironment _hostEnvironment;
 
     private CancellationTokenSource _cancellationTokenMusicSrc;
     private CancellationToken _cancellationTokenMusic;
 
     public Queue<Music> MusicQueue { get; private set; }
 
-    public MusicPlayerManager(MusicPlayerCollection musicPlayerCollection, IServiceProvider serviceProvider, ILogger<MusicPlayerManager> logger, ApplicationDbContext dbContext, IHostEnvironment hostEnvironment)
+    public MusicPlayerManager(MusicPlayerCollection musicPlayerCollection, IServiceProvider serviceProvider, ILogger<MusicPlayerManager> logger, ApplicationDbContext dbContext)
     {
         _musicPlayerCollection = musicPlayerCollection;
         _serviceProvider = serviceProvider;
         _logger = logger;
         _dbContext = dbContext;
-        _hostEnvironment = hostEnvironment;
 
         MusicQueue = new Queue<Music>();
     }
@@ -36,24 +34,32 @@ public class MusicPlayerManager
     {
         while (MusicQueue.Count != 0 && !cancellationToken.IsCancellationRequested)
         {
-            Music music = MusicQueue.Dequeue();
+            Music lmusic = MusicQueue.Dequeue();
 
-            // Take Player and play
+            // TODO Update local music and get rid of second var
             IMusicPlayer player;
-            Music dbMusic = await _dbContext.Musics.Where(m => m.IsDownloaded).Where(m=> m.Url == music.Url).FirstOrDefaultAsync();
-            if (dbMusic != null)
+            Music music = await _dbContext.Musics.Where(m=> m.Url == lmusic.Url).FirstOrDefaultAsync();
+            if (music != null)
             {
                 music.RequestsNumber++;
                 _dbContext.SaveChanges();
             }
-
-            if (dbMusic != null && dbMusic.IsDownloaded)
+            else
             {
-                if (File.Exists($"{_hostEnvironment.ContentRootPath}/music/{music.Id.ToString()}.mp3"))
+                _dbContext.Musics.Add(lmusic);
+                await _dbContext.SaveChangesAsync();
+                music = await _dbContext.Musics.Where(m=> m.Url == lmusic.Url).FirstOrDefaultAsync();
+            }
+
+            if (music != null && music.IsDownloaded)
+            {
+                Console.WriteLine(Path.GetFullPath(Path.Combine(".", music.LocalPath)));
+                if (File.Exists(Path.GetFullPath(Path.Combine(".", music.LocalPath))))
                     player = _serviceProvider.GetRequiredService<LocalMusicPlayer>();
                 else
                 {
-                    dbMusic.IsDownloaded = false;
+                    _logger.LogInformation($"Music {music.Name} not found!");
+                    music.IsDownloaded = false;
                     await _dbContext.SaveChangesAsync();
                     player = _serviceProvider.GetRequiredService<WebMusicPlayer>();
                 }
@@ -86,13 +92,13 @@ public class MusicPlayerManager
         _cancellationTokenMusicSrc.Cancel();
         await (await _audioClient).StopAsync();
 
-        _musicPlayerCollection.Remove(GuildID);
+        _musicPlayerCollection.Remove(GuildId);
     }
 
-    public async Task StartAsync(CancellationToken cancellationToken, Task<IAudioClient> audioClient, ulong guildID, Music music)
+    public async Task StartAsync(CancellationToken cancellationToken, Task<IAudioClient> audioClient, ulong guildId, Music music)
     {
         _audioClient = audioClient;
-        GuildID = guildID;
+        GuildId = guildId;
 
         AddToQueue(music);
         Player(cancellationToken);

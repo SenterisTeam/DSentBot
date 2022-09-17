@@ -11,7 +11,6 @@ public class WebMusicPlayer : IMusicPlayer
 {
     private readonly FFmpegCollection _ffmpegCollection;
     private readonly ILogger<WebMusicPlayer> _logger;
-    private readonly IHostEnvironment _hostEnvironment;
     private readonly ApplicationDbContext _dbContext;
     private CancellationToken _cancellationToken;
 
@@ -23,11 +22,10 @@ public class WebMusicPlayer : IMusicPlayer
     private Process _streamProcess;
     private Process _musicConverterProcess;
 
-    public WebMusicPlayer(FFmpegCollection ffmpegCollection, ILogger<WebMusicPlayer> logger, IHostEnvironment hostEnvironment, ApplicationDbContext dbContext)
+    public WebMusicPlayer(FFmpegCollection ffmpegCollection, ILogger<WebMusicPlayer> logger, ApplicationDbContext dbContext)
     {
         _ffmpegCollection = ffmpegCollection;
         _logger = logger;
-        _hostEnvironment = hostEnvironment;
         _dbContext = dbContext;
     }
 
@@ -77,9 +75,13 @@ public class WebMusicPlayer : IMusicPlayer
                 try
                 {
                     await Task.Delay(5000);
-                    File.Delete($"{_hostEnvironment.ContentRootPath}/music/{music.Id.ToString()}.mp3");
+                    File.Delete(Path.GetFullPath(Path.Combine(".", music.LocalPath)));
                 }
-                catch (Exception ex) { _logger.LogTrace($"{_hostEnvironment.ContentRootPath}/music/{music.Id.ToString()}.mp3 {ex.ToString()}"); }
+                catch (Exception ex)
+                {
+                    _logger.LogTrace(
+                        Path.GetFullPath(Path.Combine(".", "music", music.LocalPath) + "\n" + ex.ToString()));
+                }
             }
             finally
             {
@@ -94,18 +96,13 @@ public class WebMusicPlayer : IMusicPlayer
 
         Task.Factory.StartNew(async () =>
         {
-            Music music = await _dbContext.Musics.FirstOrDefaultAsync(m => m.Url == lmusic.Url);
-            if (music == null)
-            {
-                _dbContext.Musics.Add(lmusic);
-                await _dbContext.SaveChangesAsync();
-                music = _dbContext.Musics.FirstOrDefault(m => m.Url == lmusic.Url); // Better to change it somehow
-            }
+            Music music = await _dbContext.Musics.FirstAsync(m => m.Url == lmusic.Url);
 
-            if (!Directory.Exists(_hostEnvironment.ContentRootPath + @"\music"))
-                Directory.CreateDirectory(_hostEnvironment.ContentRootPath + @"\music");
+            if (!Directory.Exists(Path.GetFullPath(Path.Combine(".", "music"))))
+                Directory.CreateDirectory(Path.GetFullPath(Path.Combine(".", "music")));
 
-            _musicConverterProcess = _ffmpegCollection.GetMusicConvertProcess(_hostEnvironment.ContentRootPath+music.LocalPath);
+            Console.WriteLine(Path.GetFullPath(Path.Combine(".", music.LocalPath)));
+            _musicConverterProcess = _ffmpegCollection.GetMusicConvertProcess(Path.GetFullPath(Path.Combine(".", music.LocalPath)));
 
             long downloadedPointer = 0;
 

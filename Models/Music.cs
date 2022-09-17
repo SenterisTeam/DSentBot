@@ -8,7 +8,7 @@ public class Music
     [Key] public long Id { get; set; }
     public string Name { get; set; }
 
-    [NotMapped] public string LocalPath => $"/music/{Id}.mp3";
+    [NotMapped] public string LocalPath => Path.Combine("music", $"{Id}.mp3");
     public bool IsDownloaded { get; set; } = false;
 
     public string Url { get; set; }
