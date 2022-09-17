@@ -3,9 +3,11 @@ using Discord;
 using Discord.Commands;
 using Discord.Rest;
 using Discord.WebSocket;
+using DSentBot;
 using DSentBot.Services.DiscordBot;
 using DSentBot.Services.DiscordBot.Configurations;
 using DSentBot.Services.MusicPlayerServices;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Configuration;
 using Microsoft.Extensions.Options;
 using Serilog;
@@ -43,7 +45,10 @@ var host = Host.CreateDefaultBuilder()
         services.AddTransient<IMusicGetter, YouTubeUrlMusicGetter>();
         services.AddTransient<IMusicGetter, YouTubeSearchMusicGetter>();
         services.AddTransient<MusicPlayerManager>();
-        services.AddTransient<IMusicPlayer, WebMusicPlayer>();
+        services.AddTransient<WebMusicPlayer>();
+        services.AddTransient<LocalMusicPlayer>();
+
+        services.AddDbContext<ApplicationDbContext>(c => c.UseSqlite("Data Source=test.db"));
 
         services.AddSingleton<MusicPlayerCollection>();
         services.AddHostedService<MusicPlayerCollection>(c => c.GetRequiredService<MusicPlayerCollection>());

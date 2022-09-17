@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Net.Http.Headers;
 using Discord.Audio;
 using DSentBot.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace DSentBot.Services.MusicPlayerServices;
 
@@ -10,6 +11,8 @@ public class WebMusicPlayer : IMusicPlayer
 {
     private readonly FFmpegCollection _ffmpegCollection;
     private readonly ILogger<WebMusicPlayer> _logger;
+    private readonly IHostEnvironment _hostEnvironment;
+    private readonly ApplicationDbContext _dbContext;
     private CancellationToken _cancellationToken;
 
     private HttpClient _client = new();
@@ -17,23 +20,26 @@ public class WebMusicPlayer : IMusicPlayer
     private byte[] _array;
     private long _length;
 
-    private Process _process;
+    private Process _streamProcess;
+    private Process _musicConverterProcess;
 
-    public WebMusicPlayer(FFmpegCollection ffmpegCollection, ILogger<WebMusicPlayer> logger)
+    public WebMusicPlayer(FFmpegCollection ffmpegCollection, ILogger<WebMusicPlayer> logger, IHostEnvironment hostEnvironment, ApplicationDbContext dbContext)
     {
         _ffmpegCollection = ffmpegCollection;
         _logger = logger;
+        _hostEnvironment = hostEnvironment;
+        _dbContext = dbContext;
     }
 
     public async Task PlayAsync(Music music, Task<IAudioClient> audioClient, CancellationToken cancellationToken)
     {
+        _logger.LogInformation("WebMusicPlayer started!");
         _cancellationToken = cancellationToken;
         _logger.LogInformation($"Start Play");
         
         _chuckMap.Clear();
-        _length = (long) await GetContentLengthAsync(music.Path);
+        _length = (long) await GetContentLengthAsync(music.UriToStream);
         _array = new byte[_length];
-
         var k = 1.5f;
         long segmentPointer = 0;
         long chunkSize = 64_000;
@@ -42,14 +48,14 @@ public class WebMusicPlayer : IMusicPlayer
 
         while (segmentPointer < _length)
         {
-            tasksList.Add(StartDownloadTask(segmentPointer, chunkSize, counter, music.Path));
+            tasksList.Add(StartDownloadTask(segmentPointer, chunkSize, counter, music.UriToStream));
 
             segmentPointer += chunkSize;
             chunkSize = (long)Math.Floor(chunkSize * k);
             counter++;
         }
 
-        using (var ffmpeg = CreateStream())
+        using (var ffmpeg = CreateStream(music))
         using (var output = ffmpeg.StandardOutput.BaseStream)
         using (var discord = (await audioClient).CreatePCMStream(AudioApplication.Mixed, bitrate: 131072, bufferMillis: 2500, packetLoss: 0)) // Default bitrate is 96*1024
         {
@@ -64,7 +70,17 @@ public class WebMusicPlayer : IMusicPlayer
                 _logger.LogInformation($"Start Copying");
                 await output.CopyToAsync(discord, _cancellationToken);
             }
-            catch (OperationCanceledException e) {_process.StandardInput.BaseStream.Close();}
+            catch (OperationCanceledException e)
+            {
+                _streamProcess.StandardInput.BaseStream.Close();
+                _musicConverterProcess.StandardInput.BaseStream.Close();
+                try
+                {
+                    await Task.Delay(5000);
+                    File.Delete($"{_hostEnvironment.ContentRootPath}/music/{music.Id.ToString()}.mp3");
+                }
+                catch (Exception ex) { _logger.LogTrace($"{_hostEnvironment.ContentRootPath}/music/{music.Id.ToString()}.mp3 {ex.ToString()}"); }
+            }
             finally
             {
                 await discord.FlushAsync();
@@ -72,12 +88,25 @@ public class WebMusicPlayer : IMusicPlayer
         }
     }
 
-    private Process CreateStream()
+    private Process CreateStream(Music lmusic)
     {
-        _process = _ffmpegCollection.GetProcess();
+        _streamProcess = _ffmpegCollection.GetStreamProcess();
 
         Task.Factory.StartNew(async () =>
         {
+            Music music = await _dbContext.Musics.FirstOrDefaultAsync(m => m.Url == lmusic.Url);
+            if (music == null)
+            {
+                _dbContext.Musics.Add(lmusic);
+                await _dbContext.SaveChangesAsync();
+                music = _dbContext.Musics.FirstOrDefault(m => m.Url == lmusic.Url); // Better to change it somehow
+            }
+
+            if (!Directory.Exists(_hostEnvironment.ContentRootPath + @"\music"))
+                Directory.CreateDirectory(_hostEnvironment.ContentRootPath + @"\music");
+
+            _musicConverterProcess = _ffmpegCollection.GetMusicConvertProcess(_hostEnvironment.ContentRootPath+music.LocalPath);
+
             long downloadedPointer = 0;
 
             while (downloadedPointer + 1023 < _length && !_cancellationToken.IsCancellationRequested)
@@ -85,7 +114,9 @@ public class WebMusicPlayer : IMusicPlayer
                 if (IsRangeReady(downloadedPointer, downloadedPointer + 1023))
                 {
                     if (downloadedPointer == 0) _logger.LogInformation($"First network read");
-                    await _process.StandardInput.BaseStream.WriteAsync(_array, (int)downloadedPointer, 1024);
+                    Task dsWriteTask = _streamProcess.StandardInput.BaseStream.WriteAsync(_array, (int) downloadedPointer, 1024);
+                    Task fsWriteTask = _musicConverterProcess.StandardInput.BaseStream.WriteAsync(_array, (int) downloadedPointer, 1024);
+                    await Task.WhenAll(dsWriteTask, fsWriteTask);
                     downloadedPointer += 1024;
                 }
                 else
@@ -93,16 +124,21 @@ public class WebMusicPlayer : IMusicPlayer
                     await Task.Delay(1000, _cancellationToken); // TODO Test
                 }
             }
-            
-            _process.StandardInput.BaseStream.Close();
+            _streamProcess.StandardInput.BaseStream.Close();
+            _musicConverterProcess.StandardInput.BaseStream.Close();
+
+            music.IsDownloaded = true;
+            _dbContext.SaveChanges();
+
+
         }, _cancellationToken);
 
-        return _process;
+        return _streamProcess;
     }
 
-    private async Task<long?> GetContentLengthAsync(string requestUri, bool ensureSuccess = true)
+    private async Task<long?> GetContentLengthAsync(string requestUrl, bool ensureSuccess = true)
     {
-        using (var request = new HttpRequestMessage(HttpMethod.Head, requestUri))
+        using (var request = new HttpRequestMessage(HttpMethod.Head, requestUrl))
         {
             var response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
             if (ensureSuccess)
