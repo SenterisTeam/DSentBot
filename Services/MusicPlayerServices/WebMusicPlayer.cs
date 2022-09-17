@@ -118,7 +118,7 @@ public class WebMusicPlayer : IMusicPlayer
                 }
                 else
                 {
-                    await Task.Delay(1000, _cancellationToken); // TODO Test
+                    await Task.Delay(1200, _cancellationToken); // TODO Test
                 }
             }
             _streamProcess.StandardInput.BaseStream.Close();

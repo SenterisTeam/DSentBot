@@ -16,7 +16,7 @@ using Serilog;
 var host = Host.CreateDefaultBuilder()
     .UseSerilog((hostingContext, services, loggerConfiguration) => loggerConfiguration
         .ReadFrom.Configuration(hostingContext.Configuration)
-        .MinimumLevel.Debug()
+        .MinimumLevel.Information()
         .Enrich.FromLogContext()
         .WriteTo.Console())
     .ConfigureServices((context, services) =>
