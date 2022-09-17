@@ -90,14 +90,12 @@ public class WebMusicPlayer : IMusicPlayer
         }
     }
 
-    private Process CreateStream(Music lmusic)
+    private Process CreateStream(Music music)
     {
         _streamProcess = _ffmpegCollection.GetStreamProcess();
 
         Task.Factory.StartNew(async () =>
         {
-            Music music = await _dbContext.Musics.FirstAsync(m => m.Url == lmusic.Url);
-
             if (!Directory.Exists(Path.GetFullPath(Path.Combine(".", "music"))))
                 Directory.CreateDirectory(Path.GetFullPath(Path.Combine(".", "music")));
 
@@ -125,6 +123,7 @@ public class WebMusicPlayer : IMusicPlayer
             _musicConverterProcess.StandardInput.BaseStream.Close();
 
             music.IsDownloaded = true;
+            _dbContext.Musics.Update(music);
             _dbContext.SaveChanges();
 
 

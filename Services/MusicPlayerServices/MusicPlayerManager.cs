@@ -36,7 +36,7 @@ public class MusicPlayerManager
         {
             Music lmusic = MusicQueue.Dequeue();
 
-            // TODO Update local music and get rid of second var
+            // Normally combine variables
             IMusicPlayer player;
             Music music = await _dbContext.Musics.Where(m=> m.Url == lmusic.Url).FirstOrDefaultAsync();
             if (music != null)
@@ -51,7 +51,9 @@ public class MusicPlayerManager
                 music = await _dbContext.Musics.Where(m=> m.Url == lmusic.Url).FirstOrDefaultAsync();
             }
 
-            if (music != null && music.IsDownloaded)
+            music.UriToStream = lmusic.UriToStream;
+
+            if (music.IsDownloaded)
             {
                 Console.WriteLine(Path.GetFullPath(Path.Combine(".", music.LocalPath)));
                 if (File.Exists(Path.GetFullPath(Path.Combine(".", music.LocalPath))))
