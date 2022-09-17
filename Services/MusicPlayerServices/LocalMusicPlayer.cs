@@ -28,7 +28,7 @@ public class LocalMusicPlayer : IMusicPlayer
 
         Process readerProcess = _ffmpegCollection.GetReadProcess(Path.GetFullPath(Path.Combine(".", music.LocalPath)));
 
-        using (var discord = (await audioClient).CreatePCMStream(AudioApplication.Mixed, bitrate: 131072, bufferMillis: 1000, packetLoss: 0)) // Default bitrate is 96*1024
+        using (var discord = (await audioClient).CreatePCMStream(AudioApplication.Mixed, bitrate: 131072, bufferMillis: 1500, packetLoss: 0)) // Default bitrate is 96*1024
         {
             try
             {
