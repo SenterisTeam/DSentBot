@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using Discord;
 using Discord.Audio;
 using DSentBot.Models;
 using Microsoft.EntityFrameworkCore;
@@ -97,6 +98,15 @@ public class MusicPlayerManager
         _musicPlayerCollection.Remove(GuildId);
     }
 
+    private async Task AudioCheck(IAudioClient audioClient)
+    {
+        while (audioClient.ConnectionState != ConnectionState.Disconnected)
+        {
+            await Task.Delay(200);
+        }
+        StopAsync();
+    }
+
     public async Task StartAsync(CancellationToken cancellationToken, Task<IAudioClient> audioClient, ulong guildId, Music music)
     {
         _audioClient = audioClient;
@@ -104,5 +114,6 @@ public class MusicPlayerManager
 
         AddToQueue(music);
         Player(cancellationToken);
+        AudioCheck(audioClient.Result);
     }
 }
