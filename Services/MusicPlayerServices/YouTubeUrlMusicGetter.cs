@@ -25,8 +25,18 @@ public class YouTubeUrlMusicGetter : IMusicGetter
             Music music = new Music(video.Title, search, video.Uri, null);
             return music;
         }
-        catch (ArgumentException e) { }
-        catch (UnavailableStreamException e) { }
+        catch (ArgumentException e)
+        {
+            _logger.LogDebug("ArgumentException for " + search);
+        }
+        catch (UnavailableStreamException e)
+        {
+            _logger.LogInformation("UnavailableStreamException for " + search);
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e.ToString());
+        }
 
         return null;
     }

@@ -34,7 +34,7 @@ public class MusicModule : ModuleBase<SocketCommandContext>
         if (search[0].Contains("youtube.com") || search[0].Contains("youtu.be"))
             music = _provider.GetRequiredService<IMusicGetter>().GetMusicAsync(search[0]); // Will ber GetServices later
         else music = _provider.GetRequiredService<IMusicGetter>().GetMusicAsync(string.Join(' ', search));
-        if (music == null) return Result.FromError("Music not found");
+        if (music.Result == null) return Result.FromError("Music not found or not available for bot");
         MusicPlayerManager playerManager = _mpCollection.Get(Context.Guild.Id);
         if (playerManager == null)
         {
