@@ -1,7 +1,5 @@
 # DSentBot
 
-### Temporarily s! prefix do not work. Use @botUserName `command`
-
 ### Installation
 
 - Install Discord.Net packages by adding source to nuget https://www.myget.org/F/discord-net/api/v3/index.json
@@ -13,4 +11,4 @@
 ### Using
 
 - Add bot to your server
-- Send "@botUserName help" to show commands
+- Send "s!help" to show commands
