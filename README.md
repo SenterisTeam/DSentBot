@@ -1,9 +1,10 @@
 # DSentBot
 
-### Temporarily not working [discord-net/Discord.Net#2634](https://github.com/discord-net/Discord.Net/issues/2634)
+### Temporarily s! prefix do not work. Use @botUserName `command`
 
 ### Installation
 
+- Install Discord.Net packages by adding source to nuget https://www.myget.org/F/discord-net/api/v3/index.json
 - Set token by environment variable `DSentBotToken`
 - Install ef6 tools `dotnet tool install --global dotnet-ef`
   - Update Data Base `dotnet ef database update`
@@ -12,4 +13,4 @@
 ### Using
 
 - Add bot to your server
-- Send "s!help" to show commands
+- Send "@botUserName help" to show commands
