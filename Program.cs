@@ -27,7 +27,8 @@ var host = Host.CreateDefaultBuilder()
             
             c.SocketConfig = new DiscordSocketConfig()
             {
-                LogLevel = LogSeverity.Info
+                LogLevel = LogSeverity.Info,
+                GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.MessageContent | GatewayIntents.GuildMessages
             };
         });
 
