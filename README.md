@@ -2,7 +2,6 @@
 
 ### Installation
 
-- Install Discord.Net packages by adding source to nuget https://www.myget.org/F/discord-net/api/v3/index.json
 - Set token by environment variable `DSentBotToken`
 - Install ef6 tools `dotnet tool install --global dotnet-ef`
   - Update Data Base `dotnet ef database update`
