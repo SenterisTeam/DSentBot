@@ -4,6 +4,7 @@ using Discord.Commands;
 using Discord.Rest;
 using Discord.WebSocket;
 using DSentBot;
+using DSentBot.Services.Cleaner;
 using DSentBot.Services.DiscordBot;
 using DSentBot.Services.DiscordBot.Configurations;
 using DSentBot.Services.MusicPlayerServices;
@@ -42,12 +43,16 @@ var host = Host.CreateDefaultBuilder()
         services.AddSingleton<CommandService>(c => new CommandService(c.GetRequiredService<IOptions<CommandServiceConfig>>().Value));
         services.AddHostedService<DiscordHostedService>();
         services.AddHostedService<CommandHandlerService>();
+        services.AddSingleton<CleanerHostedService>();
+        services.AddHostedService<CleanerHostedService>(c => c.GetRequiredService<CleanerHostedService>());
 
         services.AddTransient<IMusicGetter, YouTubeUrlMusicGetter>();
         services.AddTransient<IMusicGetter, YouTubeSearchMusicGetter>();
         services.AddTransient<MusicPlayerManager>();
         services.AddTransient<WebMusicPlayer>();
         services.AddTransient<LocalMusicPlayer>();
+
+        services.AddSingleton<MusicEventDispatcher>();
 
         services.AddDbContext<ApplicationDbContext>(c => c.UseSqlite("Data Source=test.db"));
 

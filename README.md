@@ -1,5 +1,12 @@
 # DSentBot
 
+
+### Features
+
+- Simultaneously broadcasts and downloads musics from YouTube
+- Deletes rarely used musics if they take up too much space
+
+
 ### Installation
 
 - Set token by environment variable `DSentBotToken`

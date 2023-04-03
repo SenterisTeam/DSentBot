@@ -4,7 +4,7 @@ obj/
 riderModule.iml
 /_ReSharper.Caches/
 
-test.db
+test.db*
 music/
 .vs/
 .idea/

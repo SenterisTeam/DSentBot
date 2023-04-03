@@ -13,6 +13,7 @@ public class WebMusicPlayer : IMusicPlayer
     private readonly ILogger<WebMusicPlayer> _logger;
     private readonly ApplicationDbContext _dbContext;
     private CancellationToken _cancellationToken;
+    private MusicEventDispatcher _musicEventDispatcher;
 
     private HttpClient _client = new();
     private ConcurrentDictionary<int, MapElement> _chuckMap = new();
@@ -22,11 +23,12 @@ public class WebMusicPlayer : IMusicPlayer
     private Process _streamProcess;
     private Process _musicConverterProcess;
 
-    public WebMusicPlayer(FFmpegCollection ffmpegCollection, ILogger<WebMusicPlayer> logger, ApplicationDbContext dbContext)
+    public WebMusicPlayer(FFmpegCollection ffmpegCollection, ILogger<WebMusicPlayer> logger, ApplicationDbContext dbContext, MusicEventDispatcher musicEventDispatcher)
     {
         _ffmpegCollection = ffmpegCollection;
         _logger = logger;
         _dbContext = dbContext;
+        _musicEventDispatcher = musicEventDispatcher;
     }
 
     public async Task PlayAsync(Music music, Task<IAudioClient> audioClient, CancellationToken cancellationToken)
@@ -125,7 +127,8 @@ public class WebMusicPlayer : IMusicPlayer
             music.IsDownloaded = true;
             _dbContext.Musics.Update(music);
             _dbContext.SaveChanges();
-
+            try{_musicEventDispatcher.RaiseMusicDownloadedAsync(null, new MusicEventArgs{Music = music});}
+            catch (Exception e) {}
 
         }, _cancellationToken);
 

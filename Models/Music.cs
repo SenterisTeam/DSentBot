@@ -13,17 +13,19 @@ public class Music
 
     public string Url { get; set; }
     [NotMapped] public string UriToStream { get; set; }
-    [NotMapped] public TimeSpan? Duration { get; set; }
+    [NotMapped] public TimeSpan? Duration { get; set; } // Probably useless
+    public int DurationMin { get; set; } = 3;
     public long RequestsNumber { get; set; } = 1;
     public DateTime CreatedAt { get; set; } = DateTime.Now;
 
-    [NotMapped] public double Rating
-    {
-        get
-        {
-            return RequestsNumber / (DateTime.Now - CreatedAt).Days / Math.Pow(Duration.Value.Minutes, 0.4) * 100;
-        }
-    }
+    [NotMapped] public double Rating { get; set; } = 0; // Probably useless
+    // [NotMapped] public double Rating
+    // {
+    //     get
+    //     {
+    //         return RequestsNumber / (DateTime.Now - CreatedAt).Days+1 /*/ Math.Pow(Duration.Value.Minutes, 0.4)*/ * 100;
+    //     }
+    // }
 
     public Music(){}
 
@@ -32,6 +34,7 @@ public class Music
         Name = name;
         Url = url;
         Duration = duration;
+        DurationMin = duration.Value.Minutes;
         UriToStream = uriToStream;
 
         RequestsNumber = 1;
