@@ -5,7 +5,7 @@ namespace DSentBot.Models;
 
 public class Music
 {
-    [Key] public long Id { get; set; }
+    [Key] public ulong Id { get; set; }
     public string Name { get; set; }
 
     [NotMapped] public string LocalPath => Path.Combine("music", $"{Id}.mp3");

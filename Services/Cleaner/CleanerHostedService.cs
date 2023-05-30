@@ -18,11 +18,10 @@ public class CleanerHostedService : IHostedService
     {
         using (var provider = _serviceProvider.CreateScope())
         {
-            var dbContext = provider.ServiceProvider.GetService<ApplicationDbContext>();
+            var dbContext = provider.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-            var musics = dbContext.Musics
+            var musics = await dbContext.Musics
                 .Where(m => m.IsDownloaded)
-                .AsEnumerable()
                 .Select(m => new
                 {
                     Music = m,
@@ -30,7 +29,7 @@ public class CleanerHostedService : IHostedService
                 })
                 .OrderBy(m => m.Rating)
                 .Take(3)
-                .Select(m => m.Music).ToAsyncEnumerable();
+                .Select(m => m.Music).ToListAsync();
 
             // используем отсортированные записи
             // await foreach (var music in musics)
@@ -46,7 +45,7 @@ public class CleanerHostedService : IHostedService
             Console.WriteLine(sizeMb);
             if (sizeMb > 50)
             {
-                await foreach (var music in musics)
+                foreach (var music in musics)
                 {
                     //Console.WriteLine($"Removed: {music.Id}) {music.Name}");
                     music.IsDownloaded = false;
